@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route227 Cafe - スタンプカード</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- パーティクル背景 -->
+        <div class="particles" id="particles"></div>
+        
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <!-- 227セクション（デフォルト表示） -->
+            <section id="section-227" class="content-section active">
+                <div class="container">
+                    <header class="section-header">
+                        <h1 class="section-title">東北227情報</h1>
+                        <p class="section-subtitle">地域の魅力的なイベントや情報をお届け</p>
+                    </header>
+                    
+                    <div class="articles-grid">
+                        <article class="article-card" data-url="https://machico.mu/jump/ad/114381">
+                            <div class="article-image">
+                                <div class="placeholder-image">🏞️</div>
+                            </div>
+                            <div class="article-content">
+                                <h3 class="article-title">東北227自治体魅力発信プロジェクト</h3>
+                                <p class="article-description">地域の隠れた名所や特産品を紹介する包括的な情報プラットフォーム</p>
+                                <span class="article-date">2025年6月</span>
+                            </div>
+                        </article>
+                        
+                        <article class="article-card" data-url="https://machico.mu/special/detail/2727">
+                            <div class="article-image">
+                                <div class="placeholder-image">🎉</div>
+                            </div>
+                            <div class="article-content">
+                                <h3 class="article-title">Bang BAR SENDAI第5弾</h3>
+                                <p class="article-description">一番町四丁目商店街で5月30日から開催される、山形さくらんぼPRまつり併催の飲食イベント</p>
+                                <span class="article-date">5月30日開催</span>
+                            </div>
+                        </article>
+                        
+                        <article class="article-card" data-url="https://machico.mu/special/detail/2691">
+                            <div class="article-image">
+                                <div class="placeholder-image">🎪</div>
+                            </div>
+                            <div class="article-content">
+                                <h3 class="article-title">仙臺横丁フェス2025</h3>
+                                <p class="article-description">6月13日から15日まで勾当台公園で開催される横丁文化体験イベント</p>
+                                <span class="article-date">6月13-15日</span>
+                            </div>
+                        </article>
+                        
+                        <article class="article-card" data-url="https://machico.mu/special/detail/2704">
+                            <div class="article-image">
+                                <div class="placeholder-image">🍷</div>
+                            </div>
+                            <div class="article-content">
+                                <h3 class="article-title">バル仙台2025</h3>
+                                <p class="article-description">6月20日から22日まで開催される東北ワイン祭り</p>
+                                <span class="article-date">6月20-22日</span>
+                            </div>
+                        </article>
+                        
+                        <article class="article-card" data-url="https://machico.mu/special/detail/1742#oshamachi">
+                            <div class="article-image">
+                                <div class="placeholder-image">📻</div>
+                            </div>
+                            <div class="article-content">
+                                <h3 class="article-title">machico×ラジオ3コラボ</h3>
+                                <p class="article-description">webメディアと音声メディア（76.2MHz）の継続的なコラボレーション企画</p>
+                                <span class="article-date">継続中</span>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- FoodTruckセクション -->
+            <section id="section-foodtruck" class="content-section">
+                <div class="container">
+                    <header class="section-header">
+                        <h1 class="section-title">Route227 スタンプカード</h1>
+                        <p class="section-subtitle">おいしい食事でスタンプを集めよう！</p>
+                    </header>
+                    
+                    <div class="stamp-card">
+                        <div class="stamp-grid">
+                            <div class="stamp-hole" data-index="0"></div>
+                            <div class="stamp-hole" data-index="1"></div>
+                            <div class="stamp-hole" data-index="2"></div>
+                            <div class="stamp-hole" data-index="3"></div>
+                            <div class="stamp-hole" data-index="4"></div>
+                            <div class="stamp-hole" data-index="5"></div>
+                        </div>
+                        
+                        <div class="stamp-count">
+                            <span id="stamp-count">0</span> / 6 スタンプ
+                        </div>
+                        
+                        <button class="btn btn--primary stamp-button" id="scan-qr-btn">
+                            📱 スタンプを貯める
+                        </button>
+                    </div>
+                    
+                    <div class="rewards-section">
+                        <h2>ご褒美</h2>
+                        <div class="rewards-grid">
+                            <div class="reward-card" data-points="3">
+                                <div class="reward-icon">☕</div>
+                                <div class="reward-info">
+                                    <h3>コーヒー1杯</h3>
+                                    <p>3スタンプで交換</p>
+                                </div>
+                                <button class="btn btn--secondary reward-claim-btn" disabled>
+                                    交換する
+                                </button>
+                            </div>
+                            
+                            <div class="reward-card" data-points="6">
+                                <div class="reward-icon">🍛</div>
+                                <div class="reward-info">
+                                    <h3>東北野菜カレー1杯</h3>
+                                    <p>6スタンプで交換</p>
+                                </div>
+                                <button class="btn btn--secondary reward-claim-btn" disabled>
+                                    交換する
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- AI検索セクション -->
+            <section id="section-aisearch" class="content-section">
+                <div class="container">
+                    <header class="section-header">
+                        <h1 class="section-title">AI検索</h1>
+                        <p class="section-subtitle">東北の情報を AI で検索</p>
+                    </header>
+                    
+                    <div class="search-interface">
+                        <div class="search-box">
+                            <input type="text" class="form-control search-input" placeholder="東北の観光スポット、グルメ、イベントを検索..." id="search-input">
+                            <button class="btn btn--primary search-btn" id="search-btn">🔍</button>
+                        </div>
+                        
+                        <div class="search-history">
+                            <h3>最近の検索</h3>
+                            <div class="search-tags">
+                                <span class="search-tag">仙台グルメ</span>
+                                <span class="search-tag">温泉</span>
+                                <span class="search-tag">桜名所</span>
+                            </div>
+                        </div>
+                        
+                        <div class="popular-searches">
+                            <h3>人気の検索ワード</h3>
+                            <div class="search-tags">
+                                <span class="search-tag">仙台牛タン</span>
+                                <span class="search-tag">松島</span>
+                                <span class="search-tag">銀山温泉</span>
+                                <span class="search-tag">八幡平</span>
+                                <span class="search-tag">十和田湖</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- 固定下部ナビゲーション -->
+        <nav class="bottom-nav">
+            <button class="nav-tab active" data-section="227">
+                <span class="nav-icon">🏔️</span>
+                <span class="nav-label">227</span>
+            </button>
+            <button class="nav-tab" data-section="foodtruck">
+                <span class="nav-icon">🚚</span>
+                <span class="nav-label">FoodTruck</span>
+            </button>
+            <button class="nav-tab" data-section="aisearch">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-label">AI検索</span>
+            </button>
+        </nav>
+    </div>
+    
+    <!-- QRコードスキャンモーダル -->
+    <div class="qr-modal" id="qr-modal">
+        <div class="qr-modal-content">
+            <div class="qr-modal-header">
+                <h2>QRコードをスキャン</h2>
+                <button class="qr-close-btn" id="qr-close-btn">×</button>
+            </div>
+            <div class="qr-scanner">
+                <video id="qr-video" autoplay playsinline></video>
+                <div class="scan-overlay">
+                    <div class="scan-frame"></div>
+                </div>
+            </div>
+            <div class="qr-instructions">
+                Route227のQRコードをカメラに向けてください
+            </div>
+            <div class="qr-error" id="qr-error"></div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
