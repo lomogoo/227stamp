@@ -1,390 +1,487 @@
-// Route227 Cafe スタンプカードアプリ
+// app.js
 
 class Route227App {
-    constructor() {
-        this.currentSection = '227';
-        this.stampCount = 0;
-        this.maxStamps = 6;
-        this.qrCode = 'ROUTE227_STAMP_2025'; // 期待する QR データ
-        this.isScanning = false;
-        this.videoStream = null;
-        this.scanCanvas = null;       // 追加：QR の読み取り用に使う canvas
-        this.scanCanvasCtx = null;    // 追加：canvas のコンテキスト
-        
-        this.init();
-    }
-    
-    init() {
-        this.createParticles();
-        this.setupNavigation();
-        this.setupQRScanner();
-        this.setupArticleCards();
-        this.setupSearchInterface();
-        this.updateStampDisplay();
-        this.updateRewardButtons();
-    }
-    
-    // パーティクル背景の作成
-    createParticles() {
-        const particlesContainer = document.getElementById('particles');
-        const particleCount = 20;
-        
-        for (let i = 0; i < particleCount; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            
-            // ランダムなサイズと位置
-            const size = Math.random() * 8 + 2;
-            const x = Math.random() * 100;
-            const y = Math.random() * 100;
-            const duration = Math.random() * 4 + 4;
-            const delay = Math.random() * 2;
-            
-            particle.style.width = `${size}px`;
-            particle.style.height = `${size}px`;
-            particle.style.left = `${x}%`;
-            particle.style.top = `${y}%`;
-            particle.style.animationDuration = `${duration}s`;
-            particle.style.animationDelay = `${delay}s`;
-            
-            particlesContainer.appendChild(particle);
-        }
-    }
-    
-    // ナビゲーション設定
-    setupNavigation() {
-        const navTabs = document.querySelectorAll('.nav-tab');
-        
-        navTabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const section = tab.dataset.section;
-                this.switchSection(section);
-            });
-        });
-    }
-    
-    // セクション切り替え
-    switchSection(sectionName) {
-        // 現在のセクションを非表示
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // 新しいセクションを表示
-        const targetSection = document.getElementById(`section-${sectionName}`);
-        if (targetSection) {
-            targetSection.classList.add('active');
-        }
-        
-        // ナビタブのアクティブ状態更新
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        
-        const activeTab = document.querySelector(`[data-section="${sectionName}"]`);
-        if (activeTab) {
-            activeTab.classList.add('active');
-        }
-        
-        this.currentSection = sectionName;
-    }
-    
-    // QRスキャナー設定
-    setupQRScanner() {
-        const scanBtn = document.getElementById('scan-qr-btn');
-        const modal = document.getElementById('qr-modal');
-        const closeBtn = document.getElementById('qr-close-btn');
-        const video = document.getElementById('qr-video');
-        const errorDiv = document.getElementById('qr-error');
-        
-        scanBtn.addEventListener('click', () => {
-            this.openQRScanner();
-        });
-        
-        closeBtn.addEventListener('click', () => {
-            this.closeQRScanner();
-        });
-        
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                this.closeQRScanner();
-            }
-        });
-    　　 // 追加：QR スキャン用の canvas を動的に作成
-        this.scanCanvas = document.createElement('canvas');
-        this.scanCanvasCtx = this.scanCanvas.getContext('2d');
-    }
-    
-    // QRスキャナーを開く
-    async openQRScanner() {
-        const modal = document.getElementById('qr-modal');
-        const video = document.getElementById('qr-video');
-        const errorDiv = document.getElementById('qr-error');
-        
-        try {
-            modal.classList.add('active');
-            errorDiv.textContent = '';
-            
-            this.isScanning = true;
-            
-            // カメラストリームを取得
-            this.videoStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            });
-            
-            video.srcObject = this.videoStream;
-            
-             // QR 読み取りをループで実行
-            requestAnimationFrame(() => this.tickQRCode());
-            
-        } catch (error) {
-            console.error('カメラアクセスエラー:', error);
-            errorDiv.textContent = 'カメラにアクセスできません。ブラウザの設定を確認してください。';
-        }
-    }
-    
-      // QR コードを連続スキャンするループ
-    tickQRCode() {
-        if (!this.isScanning) return;
+  constructor() {
+    // 画面切り替え用
+    this.currentSection = "227";
 
-        const video = document.getElementById('qr-video');
-        const errorDiv = document.getElementById('qr-error');
+    // ユーザー情報（localStorage から読み出し or 初回登録）
+    this.userId = null;
+    this.userGender = null;
+    this.userAge = null;
 
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            // canvas を映像サイズに合わせる
-            this.scanCanvas.width = video.videoWidth;
-            this.scanCanvas.height = video.videoHeight;
-            // ビデオフレームを canvas に描画
-            this.scanCanvasCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+    // スタンプ管理
+    // totalStamps：累計（何回カード押したか）
+    // currentStamps：今カード上に残っているスタンプ個数（0～5→6で「特典交換」扱い→0に戻る）
+    // usedCount：特典を交換した回数
+    this.totalStamps = parseInt(localStorage.getItem("totalStamps") || "0", 10);
+    this.currentStamps = parseInt(localStorage.getItem("currentStamps") || "0", 10);
+    this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10);
 
-            // 画像データを取得して jsQR に渡す
-            const imageData = this.scanCanvasCtx.getImageData(0, 0, video.videoWidth, video.videoHeight);
-            const code = jsQR(imageData.data, imageData.width, imageData.height);
+    // QR読み取り用
+    this.qrCode = "ROUTE227_STAMP_2025"; // 期待する文字列
+    this.isScanning = false;
+    this.videoStream = null;
+    this.scanCanvas = null;
+    this.scanCanvasCtx = null;
 
-            if (code) {
-                // デコードに成功した場合
-                if (code.data === this.qrCode) {
-                    // 期待する QR コード文字列と一致したときだけスタンプ付与
-                    this.addStamp();
-                    this.closeQRScanner();
-                    return;
-                } else {
-                    // 一致しなければエラーメッセージを出して継続
-                    errorDiv.textContent = '無効な QR コードです。正しい Route227 の QR をかざしてください。';
-                }
-            }
-        }
+    // GAS Webアプリの URL をここに貼ってください
+    this.gasEndpoint = "https://script.google.com/macros/s/AKfycbz44vxzsbbVX_Lvqp2GtX-239cJaBbN9znFgixj_qcvg2aOWbacZgd9sCuVAEUSxaUCPA/exec";
 
-        // 次のフレームでもう一度チェック
-        requestAnimationFrame(() => this.tickQRCode());
+    this.init();
+  }
+
+  init() {
+    // 1) ユーザー情報を初期化 or 読み出し
+    this.initUser();
+
+    // 2) パーティクル背景
+    this.createParticles();
+
+    // 3) ナビゲーション
+    this.setupNavigation();
+
+    // 4) QRスキャナーまわり
+    this.setupQRScanner();
+
+    // 5) 記事カード
+    this.setupArticleCards();
+
+    // 6) 検索インターフェース
+    this.setupSearchInterface();
+
+    // 7) スタンプ表示を更新
+    this.updateStampDisplay();
+
+    // 8) 報酬ボタン（特典）状態を更新
+    this.updateRewardButtons();
+  }
+
+  // ─────────────────────────────────────────────
+  // ユーザー情報（ID, 性別, 年齢）を localStorage に保存／取得
+  initUser() {
+    // すでに userId が保存されていれば読み出し
+    const storedId = localStorage.getItem("userId");
+    if (!storedId) {
+      // 初回アクセス → ランダムUUIDを作成し、gender, age を prompt などで取得
+      const uuid = crypto.randomUUID();
+
+      // プロンプトで性別・年齢を簡易取得
+      let gender = "";
+      while (!["男性", "女性", "その他"].includes(gender)) {
+        gender = prompt("性別を選んでください（男性・女性・その他）");
+        if (gender === null) gender = "その他"; // キャンセル時の保険
+      }
+
+      let age = "";
+      const ageOptions = ["10代", "20代", "30代", "40代", "50代以上"];
+      while (!ageOptions.includes(age)) {
+        age = prompt("年齢を選んでください（10代・20代・30代・40代・50代以上）");
+        if (age === null) age = "20代"; // キャンセル時の保険
+      }
+
+      localStorage.setItem("userId", uuid);
+      localStorage.setItem("userGender", gender);
+      localStorage.setItem("userAge", age);
     }
 
-    
-    // QRスキャナーを閉じる
-    closeQRScanner() {
-        const modal = document.getElementById('qr-modal');
-        const video = document.getElementById('qr-video');
-        
-        this.isScanning = false;
-        modal.classList.remove('active');
-        
-        if (this.videoStream) {
-            this.videoStream.getTracks().forEach(track => track.stop());
-            this.videoStream = null;
+    // それぞれ読み出し、インスタンス変数にセット
+    this.userId = localStorage.getItem("userId");
+    this.userGender = localStorage.getItem("userGender");
+    this.userAge = localStorage.getItem("userAge");
+  }
+
+  // ─────────────────────────────────────────────
+  // パーティクル背景を作成
+  createParticles() {
+    const particlesContainer = document.getElementById("particles");
+    const particleCount = 20;
+
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement("div");
+      particle.className = "particle";
+
+      const size = Math.random() * 8 + 2;
+      const x = Math.random() * 100;
+      const y = Math.random() * 100;
+      const duration = Math.random() * 4 + 4;
+      const delay = Math.random() * 2;
+
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.left = `${x}%`;
+      particle.style.top = `${y}%`;
+      particle.style.animationDuration = `${duration}s`;
+      particle.style.animationDelay = `${delay}s`;
+
+      particlesContainer.appendChild(particle);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // ナビゲーション設定（タブ切り替え）
+  setupNavigation() {
+    const navTabs = document.querySelectorAll(".nav-tab");
+    navTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const section = tab.dataset.section;
+        this.switchSection(section);
+      });
+    });
+  }
+
+  switchSection(sectionName) {
+    document.querySelectorAll(".content-section").forEach((section) => {
+      section.classList.remove("active");
+    });
+    const targetSection = document.getElementById(`section-${sectionName}`);
+    if (targetSection) {
+      targetSection.classList.add("active");
+    }
+    document.querySelectorAll(".nav-tab").forEach((tab) => {
+      tab.classList.remove("active");
+    });
+    const activeTab = document.querySelector(`[data-section="${sectionName}"]`);
+    if (activeTab) {
+      activeTab.classList.add("active");
+    }
+    this.currentSection = sectionName;
+  }
+
+  // ─────────────────────────────────────────────
+  // QRスキャナー設定 & canvas 準備
+  setupQRScanner() {
+    const scanBtn = document.getElementById("scan-qr-btn");
+    const closeBtn = document.getElementById("qr-close-btn");
+    const modal = document.getElementById("qr-modal");
+
+    scanBtn.addEventListener("click", () => {
+      this.openQRScanner();
+    });
+    closeBtn.addEventListener("click", () => {
+      this.closeQRScanner();
+    });
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) this.closeQRScanner();
+    });
+
+    // QR読み取り用の canvas を動的に作成
+    this.scanCanvas = document.createElement("canvas");
+    this.scanCanvasCtx = this.scanCanvas.getContext("2d");
+  }
+
+  // QRスキャナーを開く
+  async openQRScanner() {
+    const modal = document.getElementById("qr-modal");
+    const video = document.getElementById("qr-video");
+    const errorDiv = document.getElementById("qr-error");
+
+    try {
+      modal.classList.add("active");
+      errorDiv.textContent = "";
+
+      // isScanning を true にしてスキャンループを進行させる
+      this.isScanning = true;
+
+      // カメラストリームを取得
+      this.videoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      video.srcObject = this.videoStream;
+
+      // QRコード読み取りループ開始
+      requestAnimationFrame(() => this.tickQRCode());
+    } catch (error) {
+      console.error("カメラアクセスエラー:", error);
+      errorDiv.textContent = "カメラにアクセスできません。ブラウザの設定を確認してください。";
+    }
+  }
+
+  // QRコードを連続スキャンするループ
+  tickQRCode() {
+    if (!this.isScanning) return;
+
+    const video = document.getElementById("qr-video");
+    const errorDiv = document.getElementById("qr-error");
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      // canvas を動画サイズに合わせる
+      this.scanCanvas.width = video.videoWidth;
+      this.scanCanvas.height = video.videoHeight;
+      this.scanCanvasCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
+      // 画像データを取得して jsQR に渡す
+      const imageData = this.scanCanvasCtx.getImageData(0, 0, video.videoWidth, video.videoHeight);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code) {
+        // デコード成功
+        if (code.data === this.qrCode) {
+          // 期待する QR コード文字列と一致 → スタンプ付与処理
+          this.addStamp();
+          this.closeQRScanner();
+          return;
+        } else {
+          // 一致しない場合はエラー文言を表示してループ継続
+          errorDiv.textContent = "無効な QR コードです。正しい Route227 の QR をかざしてください。";
         }
-        
-        video.srcObject = null;
-        
-    　　 // エラーメッセージをリセットしておく
-        const errorDiv = document.getElementById('qr-error');
-        if (errorDiv) errorDiv.textContent = '';
+      }
     }
-    
-    
-    // スタンプを追加
-    addStamp() {
-        if (this.stampCount < this.maxStamps) {
-            this.stampCount++;
-            this.updateStampDisplay();
-            this.updateRewardButtons();
-            
-            // 成功アニメーション
-            const stampHole = document.querySelector(`[data-index="${this.stampCount - 1}"]`);
-            if (stampHole) {
-                stampHole.classList.add('filled', 'stamp-success');
-                
-                // アニメーション完了後にクラスを削除
-                setTimeout(() => {
-                    stampHole.classList.remove('stamp-success');
-                }, 600);
-            }
-            
-            // 成功メッセージ（簡易的なアラート）
-            this.showSuccessMessage();
-        }
+
+    // 次のフレームでもう一度チェック
+    requestAnimationFrame(() => this.tickQRCode());
+  }
+
+  // QRスキャナーを閉じる
+  closeQRScanner() {
+    const modal = document.getElementById("qr-modal");
+    const video = document.getElementById("qr-video");
+
+    this.isScanning = false;
+    modal.classList.remove("active");
+
+    if (this.videoStream) {
+      this.videoStream.getTracks().forEach((track) => track.stop());
+      this.videoStream = null;
     }
-    
-    // スタンプ表示を更新
-    updateStampDisplay() {
-        const countElement = document.getElementById('stamp-count');
-        if (countElement) {
-            countElement.textContent = this.stampCount;
-        }
-        
-        // スタンプ穴の表示更新
-        const stampHoles = document.querySelectorAll('.stamp-hole');
-        stampHoles.forEach((hole, index) => {
-            if (index < this.stampCount) {
-                hole.classList.add('filled');
-            } else {
-                hole.classList.remove('filled');
-            }
-        });
+    video.srcObject = null;
+
+    // エラーメッセージクリア
+    const errorDiv = document.getElementById("qr-error");
+    if (errorDiv) errorDiv.textContent = "";
+  }
+
+  // ─────────────────────────────────────────────
+  // スタンプを追加するメソッド（＋ローカル保存・GAS送信）
+  addStamp() {
+    // ─── 1) localStorage 上の currentStamps を +1 して更新 ───
+    let curr = parseInt(localStorage.getItem("currentStamps") || "0", 10);
+    curr += 1;
+
+    // ─── 2) currentStamps が 6 になったら「特典交換」扱いで 0 に戻す ───
+    if (curr >= 6) {
+      curr = 0;
+      this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10) + 1;
+      localStorage.setItem("usedCount", this.usedCount);
     }
-    
-    // 報酬ボタンの状態更新
-    updateRewardButtons() {
-        const rewardCards = document.querySelectorAll('.reward-card');
-        
-        rewardCards.forEach(card => {
-            const requiredPoints = parseInt(card.dataset.points);
-            const claimBtn = card.querySelector('.reward-claim-btn');
-            
-            if (this.stampCount >= requiredPoints) {
-                card.classList.add('available');
-                claimBtn.classList.add('enabled');
-                claimBtn.disabled = false;
-                claimBtn.textContent = '交換する';
-                
-                // 交換ボタンのイベントリスナー
-                claimBtn.onclick = () => this.claimReward(requiredPoints);
-            } else {
-                card.classList.remove('available');
-                claimBtn.classList.remove('enabled');
-                claimBtn.disabled = true;
-                claimBtn.textContent = '交換する';
-            }
-        });
+    localStorage.setItem("currentStamps", curr.toString());
+    this.currentStamps = curr;
+
+    // ─── 3) 累計スタンプ totalStamps を +1 して更新 ───
+    this.totalStamps = parseInt(localStorage.getItem("totalStamps") || "0", 10) + 1;
+    localStorage.setItem("totalStamps", this.totalStamps.toString());
+
+    // ─── 4) 画面表示を更新 ───
+    this.updateStampDisplay();
+    this.updateRewardButtons();
+
+    // ─── 5) 成功アニメーション ───
+    const stampHole = document.querySelector(`[data-index="${this.currentStamps - 1}"]`);
+    if (stampHole) {
+      stampHole.classList.add("filled", "stamp-success");
+      setTimeout(() => {
+        stampHole.classList.remove("stamp-success");
+      }, 600);
     }
-    
-    // 報酬を交換
-    claimReward(requiredPoints) {
-        if (this.stampCount >= requiredPoints) {
-            this.stampCount -= requiredPoints;
-            this.updateStampDisplay();
-            this.updateRewardButtons();
-            
-            // 交換成功メッセージ
-            alert(`おめでとうございます！報酬と交換しました。残りスタンプ数: ${this.stampCount}`);
-        }
+    this.showSuccessMessage();
+
+    // ─── 6) GAS に送信（ユーザー情報＋スタンプ状況） ───
+    this.sendStampToSheet({
+      id: this.userId,
+      gender: this.userGender,
+      age: this.userAge,
+      stampTime: new Date().toISOString(),
+      totalStamps: this.totalStamps,
+      currentStamps: this.currentStamps,
+      usedCount: this.usedCount,
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // 画面上のスタンプ表示を更新
+  updateStampDisplay() {
+    const countElement = document.getElementById("stamp-count");
+    if (countElement) {
+      countElement.textContent = this.currentStamps;
     }
-    
-    // 成功メッセージを表示
-    showSuccessMessage() {
-        // 簡易的な成功メッセージ
-        const message = document.createElement('div');
-        message.textContent = `スタンプ獲得！ (${this.stampCount}/${this.maxStamps})`;
-        message.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #4CAF50;
-            color: white;
-            padding: 20px 30px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 3000;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            animation: fadeInOut 2s ease;
-        `;
-        
-        // フェードインアウトアニメーション
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeInOut {
-                0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-                20%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-                100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        document.body.appendChild(message);
-        
-        setTimeout(() => {
-            document.body.removeChild(message);
-            document.head.removeChild(style);
-        }, 2000);
+    const stampHoles = document.querySelectorAll(".stamp-hole");
+    stampHoles.forEach((hole, index) => {
+      if (index < this.currentStamps) {
+        hole.classList.add("filled");
+      } else {
+        hole.classList.remove("filled");
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // 報酬（特典交換）ボタンの状態を更新
+  updateRewardButtons() {
+    const rewardCards = document.querySelectorAll(".reward-card");
+    rewardCards.forEach((card) => {
+      const requiredPoints = parseInt(card.dataset.points, 10);
+      const claimBtn = card.querySelector(".reward-claim-btn");
+
+      if (this.currentStamps >= requiredPoints) {
+        card.classList.add("available");
+        claimBtn.classList.add("enabled");
+        claimBtn.disabled = false;
+        claimBtn.textContent = "交換する";
+        claimBtn.onclick = () => this.claimReward(requiredPoints);
+      } else {
+        card.classList.remove("available");
+        claimBtn.classList.remove("enabled");
+        claimBtn.disabled = true;
+        claimBtn.textContent = "交換する";
+        claimBtn.onclick = null;
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // 特典を交換するメソッド（スタンプを消費し、usedCount を +1）
+  claimReward(requiredPoints) {
+    if (this.currentStamps >= requiredPoints) {
+      // currentStamps を減算
+      this.currentStamps -= requiredPoints;
+      localStorage.setItem("currentStamps", this.currentStamps.toString());
+
+      // 報酬交換回数（usedCount）を +1
+      this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10) + 1;
+      localStorage.setItem("usedCount", this.usedCount.toString());
+
+      // 画面更新
+      this.updateStampDisplay();
+      this.updateRewardButtons();
+
+      // 成功アラート
+      alert(`おめでとうございます！報酬と交換しました。残りスタンプ数: ${this.currentStamps}`);
+
+      // GAS にも交換情報を送信（必要に応じて）
+      this.sendStampToSheet({
+        id: this.userId,
+        gender: this.userGender,
+        age: this.userAge,
+        stampTime: new Date().toISOString(),
+        totalStamps: this.totalStamps,
+        currentStamps: this.currentStamps,
+        usedCount: this.usedCount,
+      });
     }
-    
-    // 記事カードの設定
-    setupArticleCards() {
-        const articleCards = document.querySelectorAll('.article-card');
-        
-        articleCards.forEach(card => {
-            card.addEventListener('click', () => {
-                const url = card.dataset.url;
-                if (url) {
-                    window.open(url, '_blank');
-                }
-            });
-        });
+  }
+
+  // ─────────────────────────────────────────────
+  // 成功メッセージを一時表示
+  showSuccessMessage() {
+    const message = document.createElement("div");
+    message.textContent = `スタンプ獲得！ (${this.currentStamps}/6)`;
+    message.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #4CAF50;
+      color: white;
+      padding: 20px 30px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 3000;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: fadeInOut 2s ease;
+    `;
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes fadeInOut {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        20%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(message);
+    setTimeout(() => {
+      document.body.removeChild(message);
+      document.head.removeChild(style);
+    }, 2000);
+  }
+
+  // ─────────────────────────────────────────────
+  // 記事カードをクリックで別タブに飛ばす
+  setupArticleCards() {
+    const articleCards = document.querySelectorAll(".article-card");
+    articleCards.forEach((card) => {
+      card.addEventListener("click", () => {
+        const url = card.dataset.url;
+        if (url) window.open(url, "_blank");
+      });
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // 検索インターフェース設定
+  setupSearchInterface() {
+    const searchInput = document.getElementById("search-input");
+    const searchBtn = document.getElementById("search-btn");
+    const searchTags = document.querySelectorAll(".search-tag");
+
+    if (searchBtn) {
+      searchBtn.addEventListener("click", () => {
+        this.performSearch(searchInput.value);
+      });
     }
-    
-    // 検索インターフェース設定
-    setupSearchInterface() {
-        const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
-        const searchTags = document.querySelectorAll('.search-tag');
-        
-        if (searchBtn) {
-            searchBtn.addEventListener('click', () => {
-                this.performSearch(searchInput.value);
-            });
-        }
-        
-        if (searchInput) {
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.performSearch(searchInput.value);
-                }
-            });
-        }
-        
-        searchTags.forEach(tag => {
-            tag.addEventListener('click', () => {
-                searchInput.value = tag.textContent;
-                this.performSearch(tag.textContent);
-            });
-        });
+    if (searchInput) {
+      searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") this.performSearch(searchInput.value);
+      });
     }
-    
-    // 検索実行（UIのみ）
-    performSearch(query) {
-        if (query.trim()) {
-            // 実際の検索機能はサーバーサイドが必要
-            alert(`「${query}」で検索しました。\n\n※この機能は現在デモ版です。実際の検索結果は今後実装予定です。`);
-        }
+    searchTags.forEach((tag) => {
+      tag.addEventListener("click", () => {
+        searchInput.value = tag.textContent;
+        this.performSearch(tag.textContent);
+      });
+    });
+  }
+
+  performSearch(query) {
+    if (query.trim()) {
+      alert(`「${query}」で検索しました。\n\n※この機能はデモ版です。実際の検索は未実装`);
     }
+  }
+
+  // ─────────────────────────────────────────────
+  // GAS（Google Apps Script） に POST 送信するメソッド
+  async sendStampToSheet(data) {
+    try {
+      const response = await fetch(this.gasEndpoint, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      });
+      const text = await response.text();
+      console.log("GAS 送信結果:", text);
+    } catch (err) {
+      console.error("スプレッドシート送信エラー:", err);
+    }
+  }
 }
 
+// ─────────────────────────────────────────────
 // アプリケーション初期化
-document.addEventListener('DOMContentLoaded', () => {
-    window.route227App = new Route227App();
+document.addEventListener("DOMContentLoaded", () => {
+  window.route227App = new Route227App();
 });
 
-// サービスワーカーの登録（PWA対応の準備）
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        // 現在はサービスワーカーファイルなしなのでコメントアウト
-        // navigator.serviceWorker.register('/sw.js')
-        //     .then(registration => console.log('SW registered'))
-        //     .catch(error => console.log('SW registration failed'));
-    });
+// ─────────────────────────────────────────────
+// PWA 対応のためのサービスワーカー登録（現時点では未使用）
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    // navigator.serviceWorker.register('/sw.js')
+    //   .then(reg => console.log('SW registered'))
+    //   .catch(err => console.log('SW registration failed'));
+  });
 }
