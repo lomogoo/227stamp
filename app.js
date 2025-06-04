@@ -45,53 +45,73 @@ class Route227App {
     this.scanCanvas = null;
     this.scanCanvasCtx = null;
 
+    // 初期化
     this.init();
   }
 
-init() {
+  /**
+   * ─────────────────────────────────────────────
+   * 初期化
+   * ─────────────────────────────────────────────
+   */
+  init() {
     // 1) パーティクル背景
     this.createParticles();
+
     // 2) ナビゲーション
     this.setupNavigation();
+
     // 3) QRスキャナー周り
     this.setupQRScanner();
+
     // 4) 記事カード
     this.setupArticleCards();
+
     // 5) カテゴリフィルタリング
     this.setupCategoryFiltering();
+
     // 6) 検索インターフェース
     this.setupSearchInterface();
+
     // 7) プロフィールとスタンプ管理フローを開始
     this.checkUserProfileAndInitialize();
+  } // ← ここで init() をきちんと閉じる
 
- async checkUserProfileAndInitialize() {
-  try {
-    const response = await fetch(`${API_URL}?id=${DEVICE_ID}`, { cache: 'no-store' });
-    const result = await response.json();
+  // ─────────────────────────────────────────────
+  // 3-1) ユーザーがすでに「プロファイル登録済み」かを判定し、
+  //      必要なら入力フォームを表示、終わったらスタンプデータを取得して表示
+  // ─────────────────────────────────────────────
+  async checkUserProfileAndInitialize() {
+    // ここでは強制的に「新規ユーザー」としてモーダルを開く（forceNew パラメータ ⾮⾏きのときは doGet してもよい）
+    this.showProfileModal();
 
-    if (result.newUser) {
-      // 初見ユーザーならプロフィール入力を表示
-      this.showProfileModal();
-    } else {
-      // 既存ユーザーならデータをセットして表示
-      this.profile = {
-        gender: result.data.gender,
-        age: result.data.age,
-        job: result.data.job,
-        region: result.data.region,
-      };
-      this.currentStamps = result.data.currentStamps;
-      this.totalStamps = result.data.totalStamps;
-      this.usedCount = result.data.usedCount;
-
-      this.updateStampDisplay();
-      this.updateRewardButtons();
-    }
-  } catch (err) {
-    console.error("初期化エラー:", err);
-    alert("初期化に失敗しました。ページを再読み込みしてください。");
+    // ── もし通常動作で「URLパラメータ forceNew=true 以外はシート判定したい」場合は、
+    //     ↓ を使って「既存ユーザーかどうか」をチェックしてもOKです。
+    //
+    // const noCacheUrl = `${API_URL}?id=${encodeURIComponent(DEVICE_ID)}&t=${Date.now()}`;
+    // const response = await fetch(noCacheUrl, { method: "GET", cache: "no-store" });
+    // if (response.ok) {
+    //   const result = await response.json();
+    //   if (result.newUser === false) {
+    //     // 既存ユーザー → result.data を適用
+    //     this.profile = {
+    //       gender: result.data.gender,
+    //       age: result.data.age,
+    //       job: result.data.job,
+    //       region: result.data.region
+    //     };
+    //     this.currentStamps = result.data.currentStamps;
+    //     this.totalStamps = result.data.totalStamps;
+    //     this.usedCount = result.data.usedCount;
+    //     this.updateStampDisplay();
+    //     this.updateRewardButtons();
+    //     return;
+    //   }
+    // }
+    // // newUser だった場合（または通信エラー時）は showProfileModal() を呼べばOK
+    // this.showProfileModal();
   }
-}
+
   // ─────────────────────────────────────────────
   // 3-2) プロフィール入力モーダルを表示し、登録完了で API に送信
   showProfileModal() {
@@ -226,13 +246,18 @@ init() {
   }
 
   switchSection(sectionName) {
+    // 1) すべてのセクションを非表示に
     document.querySelectorAll(".content-section").forEach((section) => {
       section.classList.remove("active");
     });
+
+    // 2) 指定されたセクションID を表示
     const targetSection = document.getElementById(`section-${sectionName}`);
     if (targetSection) {
       targetSection.classList.add("active");
     }
+
+    // 3) ナビのアクティブ状態を切り替え
     document.querySelectorAll(".nav-tab").forEach((tab) => {
       tab.classList.remove("active");
     });
@@ -240,6 +265,7 @@ init() {
     if (activeTab) {
       activeTab.classList.add("active");
     }
+
     this.currentSection = sectionName;
   }
 
@@ -559,7 +585,7 @@ init() {
       alert(`「${query}」で検索しました。\n\n※この機能はデモ版です。実際の検索は未実装`);
     }
   }
-}
+} // ← ここでクラス Route227App を閉じる
 
 // ─────────────────────────────────────────────
 // URLパラメータ「?forceNew=true」が付いていたら LocalStorage をクリア
