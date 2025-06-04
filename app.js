@@ -64,23 +64,34 @@ init() {
     // 7) プロフィールとスタンプ管理フローを開始
     this.checkUserProfileAndInitialize();
 
-  // ─────────────────────────────────────────────
-  // 3-1) ユーザーがすでに「プロファイル登録済み」かを判定し、
-  //      必要なら入力フォームを表示、終わったらスタンプデータを取得して表示
-  // ─────────────────────────────────────────────
-  // 本来は doGet して newUser:true/false を判定していた部分を、
-  // “必ず初見ユーザー扱いでモーダルを出す” に変更
-  async checkUserProfileAndInitialize() {
-    // ここで doGet を呼ばず、常に「初回扱い」としてモーダルを開く
-    this.showProfileModal();
+ async checkUserProfileAndInitialize() {
+  try {
+    const response = await fetch(`${API_URL}?id=${DEVICE_ID}`, { cache: 'no-store' });
+    const result = await response.json();
 
-    // （もし「URLパラメータforceNew=true」以外はシート判定したい場合は、
-    //  上記の forceNew ロジック部分を使って一時的にクリアしているのでOK）
-    //
-    // ── もし本番環境で「一部ユーザーだけ再登録させたい」「通常は既存ユーザーとして挙動させたい」
-    //    といった場合はここに doGet ロジックを戻しつつ条件分岐を行ってください。
+    if (result.newUser) {
+      // 初見ユーザーならプロフィール入力を表示
+      this.showProfileModal();
+    } else {
+      // 既存ユーザーならデータをセットして表示
+      this.profile = {
+        gender: result.data.gender,
+        age: result.data.age,
+        job: result.data.job,
+        region: result.data.region,
+      };
+      this.currentStamps = result.data.currentStamps;
+      this.totalStamps = result.data.totalStamps;
+      this.usedCount = result.data.usedCount;
+
+      this.updateStampDisplay();
+      this.updateRewardButtons();
+    }
+  } catch (err) {
+    console.error("初期化エラー:", err);
+    alert("初期化に失敗しました。ページを再読み込みしてください。");
   }
-
+}
   // ─────────────────────────────────────────────
   // 3-2) プロフィール入力モーダルを表示し、登録完了で API に送信
   showProfileModal() {
