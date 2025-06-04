@@ -1,14 +1,31 @@
 // app.js
 
+/**
+ * ───── 1) 端末ID を localStorageで管理 ─────
+ *    - 初回アクセス時に randomUUID() で生成して localStorage に保存
+ *    - 2回目以降は同じ ID を使う
+ */
+function getOrCreateDeviceId() {
+  const KEY = "deviceId";
+  let deviceId = localStorage.getItem(KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID(); // モダンブラウザならこれで UUID 生成可能
+    localStorage.setItem(KEY, deviceId);
+  }
+  return deviceId;
+}
+const DEVICE_ID = getOrCreateDeviceId();
+
+/**
+ * ───── 2) GAS の Web アプリ URL ─────
+ *    - 先ほどデプロイした「StampAPI v2」のウェブアプリ URL を貼り付けてください
+ */
+const API_URL = "https://script.google.com/macros/s/AKfycbxULiEhYE0JZqQ5p-Tz6lR_XiCSO-4EnoHy56OolO4fzDTEfElw620DZKyfH7mQpUyEhA/exec";
+
 class Route227App {
   constructor() {
     // 画面切り替え用
     this.currentSection = "227";
-
-    // ユーザー情報（localStorage から読み出し or 初回登録）
-    this.userId = null;
-    this.userGender = null;
-    this.userAge = null;
 
     // スタンプ管理
     // totalStamps：累計（何回カード押したか）
@@ -18,6 +35,9 @@ class Route227App {
     this.currentStamps = parseInt(localStorage.getItem("currentStamps") || "0", 10);
     this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10);
 
+    // プロファイル情報
+    this.profile = { gender: "", age: "", job: "", region: "" };
+
     // QR読み取り用
     this.qrCode = "ROUTE227_STAMP_2025"; // 期待する文字列
     this.isScanning = false;
@@ -25,71 +45,163 @@ class Route227App {
     this.scanCanvas = null;
     this.scanCanvasCtx = null;
 
-    // GAS Webアプリの URL をここに貼ってください
-    this.gasEndpoint = "https://script.google.com/macros/s/AKfycbz44vxzsbbVX_Lvqp2GtX-239cJaBbN9znFgixj_qcvg2aOWbacZgd9sCuVAEUSxaUCPA/exec";
-
     this.init();
   }
 
   init() {
-    // 1) ユーザー情報を初期化 or 読み出し
-    this.initUser();
-
-    // 2) パーティクル背景
+    // 1) パーティクル背景
     this.createParticles();
 
-    // 3) ナビゲーション
+    // 2) ナビゲーション
     this.setupNavigation();
 
-    // 4) QRスキャナーまわり
+    // 3) QRスキャナーまわり
     this.setupQRScanner();
 
-    // 5) 記事カード（クリックとフィルタリング）
+    // 4) 記事カード
     this.setupArticleCards();
+
+    // 5) カテゴリフィルタリング
     this.setupCategoryFiltering();
 
     // 6) 検索インターフェース
     this.setupSearchInterface();
 
-    // 7) スタンプ表示を更新
-    this.updateStampDisplay();
-
-    // 8) 報酬ボタン（特典）状態を更新
-    this.updateRewardButtons();
+    // 7) プロフィールとスタンプ管理のフローを開始
+    this.checkUserProfileAndInitialize();
   }
 
   // ─────────────────────────────────────────────
-  // ユーザー情報（ID, 性別, 年齢）を localStorage に保存／取得
-  initUser() {
-    // すでに userId が保存されていれば読み出し
-    const storedId = localStorage.getItem("userId");
-    if (!storedId) {
-      // 初回アクセス → ランダムUUIDを作成し、gender, age を prompt などで取得
-      const uuid = crypto.randomUUID();
-
-      // プロンプトで性別・年齢を簡易取得
-      let gender = "";
-      while (!["男性", "女性", "その他"].includes(gender)) {
-        gender = prompt("性別を選んでください（男性・女性・その他）");
-        if (gender === null) gender = "その他"; // キャンセル時の保険
+  // 3-1) ユーザーがすでに「プロファイル登録済み」かを判定し、
+  //      必要なら入力フォームを表示、終わったらスタンプデータを取得して表示
+  async checkUserProfileAndInitialize() {
+    try {
+      const noCacheUrl = API_URL + "?id=" + encodeURIComponent(DEVICE_ID) + "&t=" + Date.now();
+      const response = await fetch(noCacheUrl, { method: "GET", cache: "no-store" });
+      if (!response.ok) throw new Error("ネットワークエラー(" + response.status + ")");
+      const result = await response.json();
+      // result は { newUser: boolean, data: {...} } のはず
+      if (result.newUser === true) {
+        // 初回アクセス（プロファイル未登録）→ 入力フォームを表示
+        this.showProfileModal();
+      } else {
+        // 既存ユーザー → result.data に プロファイルとスタンプ情報がある
+        this.profile = {
+          gender: result.data.gender,
+          age: result.data.age,
+          job: result.data.job,
+          region: result.data.region
+        };
+        this.currentStamps = result.data.currentStamps;
+        this.totalStamps = result.data.totalStamps;
+        this.usedCount = result.data.usedCount;
+        // 画面上にスタンプ数を反映
+        this.updateStampDisplay();
+        this.updateRewardButtons();
       }
-
-      let age = "";
-      const ageOptions = ["10代", "20代", "30代", "40代", "50代以上"];
-      while (!ageOptions.includes(age)) {
-        age = prompt("年齢を選んでください（10代・20代・30代・40代・50代以上）");
-        if (age === null) age = "20代"; // キャンセル時の保険
-      }
-
-      localStorage.setItem("userId", uuid);
-      localStorage.setItem("userGender", gender);
-      localStorage.setItem("userAge", age);
+    } catch (err) {
+      console.error("ユーザーデータ取得エラー:", err);
+      // エラー時はとりあえずスタンプを 0 にして表示しておく
+      this.currentStamps = 0;
+      this.totalStamps = 0;
+      this.usedCount = 0;
+      this.updateStampDisplay();
+      this.updateRewardButtons();
     }
+  }
 
-    // それぞれ読み出し、インスタンス変数にセット
-    this.userId = localStorage.getItem("userId");
-    this.userGender = localStorage.getItem("userGender");
-    this.userAge = localStorage.getItem("userAge");
+  // ─────────────────────────────────────────────
+  // 3-2) プロフィール入力モーダルを表示し、登録完了で API に送信
+  showProfileModal() {
+    const modal = document.getElementById("profile-modal");
+    modal.style.display = "flex"; // モーダルを画面に表示
+
+    const form = document.getElementById("profile-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); // デフォルトの submit（ページ遷移）をキャンセル
+
+      // 各 select 要素から選択値を取得
+      const gender = document.getElementById("gender-select").value;
+      const age    = document.getElementById("age-select").value;
+      const job    = document.getElementById("job-select").value;
+      const region = document.getElementById("region-select").value;
+
+      // すべて埋まっているかを念のためチェック
+      if (!gender || !age || !job || !region) {
+        alert("すべての項目を選択してください。");
+        return;
+      }
+
+      // 4) スタンプ情報は初期値 (0,0,0)
+      const payload = {
+        id: DEVICE_ID,
+        currentStamps: 0,
+        totalStamps: 0,
+        usedCount: 0,
+        gender: gender,
+        age: age,
+        job: job,
+        region: region
+      };
+
+      try {
+        // 5) POST してスプレッドシートにプロファイル＋スタンプ初期値を登録
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          cache: "no-store"
+        });
+        if (!response.ok) throw new Error("POST エラー(" + response.status + ")");
+        const result = await response.json();
+        // result.newUser は false、result.data に登録後の値が来る
+        this.profile = {
+          gender: result.data.gender,
+          age: result.data.age,
+          job: result.data.job,
+          region: result.data.region
+        };
+        this.currentStamps = result.data.currentStamps; // 0
+        this.totalStamps   = result.data.totalStamps;   // 0
+        this.usedCount     = result.data.usedCount;     // 0
+
+        // 6) モーダルを閉じて、スタンプ表示を更新
+        modal.style.display = "none";
+        this.updateStampDisplay();
+        this.updateRewardButtons();
+      } catch (err) {
+        console.error("プロフィール登録エラー:", err);
+        alert("プロフィール登録に失敗しました。もう一度お試しください。");
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // 3-3) スタンプ情報を更新する関数（QRコード成功時に呼び出す）
+  async updateStampDataToSheet(newCurrent, newTotal, newUsed) {
+    const payload = {
+      id: DEVICE_ID,
+      currentStamps: newCurrent,
+      totalStamps: newTotal,
+      usedCount: newUsed,
+      gender: this.profile.gender,
+      age: this.profile.age,
+      job: this.profile.job,
+      region: this.profile.region
+    };
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("POST エラー: " + response.status);
+      const result = await response.json();
+      console.log("スタンプ更新後のデータ:", result);
+    } catch (err) {
+      console.error("スタンプ更新エラー:", err);
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -189,8 +301,8 @@ class Route227App {
         video: {
           facingMode: "environment",
           width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+          height: { ideal: 720 }
+        }
       });
       video.srcObject = this.videoStream;
 
@@ -257,13 +369,13 @@ class Route227App {
   }
 
   // ─────────────────────────────────────────────
-  // スタンプを追加するメソッド（＋ローカル保存・GAS送信）
+  // スタンプを追加するメソッド（＋ローカル保存・シート送信）
   addStamp() {
-    // ─── 1) localStorage 上の currentStamps を +1 して更新 ───
+    // 1) localStorage 上の currentStamps を +1 して更新
     let curr = parseInt(localStorage.getItem("currentStamps") || "0", 10);
     curr += 1;
 
-    // ─── 2) currentStamps が 6 になったら「特典交換」扱いで 0 に戻す ───
+    // 2) currentStamps が 6 になったら「特典交換」扱いで 0 に戻す
     if (curr >= 6) {
       curr = 0;
       this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10) + 1;
@@ -272,15 +384,15 @@ class Route227App {
     localStorage.setItem("currentStamps", curr.toString());
     this.currentStamps = curr;
 
-    // ─── 3) 累計スタンプ totalStamps を +1 して更新 ───
+    // 3) 累計スタンプ totalStamps を +1 して更新
     this.totalStamps = parseInt(localStorage.getItem("totalStamps") || "0", 10) + 1;
     localStorage.setItem("totalStamps", this.totalStamps.toString());
 
-    // ─── 4) 画面表示を更新 ───
+    // 4) 画面表示を更新
     this.updateStampDisplay();
     this.updateRewardButtons();
 
-    // ─── 5) 成功アニメーション ───
+    // 5) 成功アニメーション
     const stampHole = document.querySelector(`[data-index="${this.currentStamps - 1}"]`);
     if (stampHole) {
       stampHole.classList.add("filled", "stamp-success");
@@ -290,16 +402,8 @@ class Route227App {
     }
     this.showSuccessMessage();
 
-    // ─── 6) GAS に送信（ユーザー情報＋スタンプ状況） ───
-    this.sendStampToSheet({
-      id: this.userId,
-      gender: this.userGender,
-      age: this.userAge,
-      stampTime: new Date().toISOString(),
-      totalStamps: this.totalStamps,
-      currentStamps: this.currentStamps,
-      usedCount: this.usedCount,
-    });
+    // 6) シートに更新を送る
+    this.updateStampDataToSheet(this.currentStamps, this.totalStamps, this.usedCount);
   }
 
   // ─────────────────────────────────────────────
@@ -362,16 +466,8 @@ class Route227App {
       // 成功アラート
       alert(`おめでとうございます！報酬と交換しました。残りスタンプ数: ${this.currentStamps}`);
 
-      // GAS にも交換情報を送信（必要に応じて）
-      this.sendStampToSheet({
-        id: this.userId,
-        gender: this.userGender,
-        age: this.userAge,
-        stampTime: new Date().toISOString(),
-        totalStamps: this.totalStamps,
-        currentStamps: this.currentStamps,
-        usedCount: this.usedCount,
-      });
+      // シートにも交換情報を送信
+      this.updateStampDataToSheet(this.currentStamps, this.totalStamps, this.usedCount);
     }
   }
 
@@ -424,19 +520,19 @@ class Route227App {
   }
 
   // ─────────────────────────────────────────────
-  // カテゴリータブをクリックすると記事をフィルタリング
+  // カテゴリフィルタリング設定
   setupCategoryFiltering() {
     const tabs = document.querySelectorAll(".category-tab");
     const articles = document.querySelectorAll(".article-card");
 
     tabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        // アクティブタブの切り替え
-        tabs.forEach(t => t.classList.remove("active"));
+      const handler = () => {
+        // タブのアクティブ切り替え
+        tabs.forEach((t) => t.classList.remove("active"));
         tab.classList.add("active");
 
-        const selected = tab.dataset.category; // all, event, news, shop
-
+        // 選択カテゴリで記事を表示/非表示
+        const selected = tab.dataset.category;
         articles.forEach((article) => {
           const cat = article.dataset.category;
           if (selected === "all" || cat === selected) {
@@ -445,7 +541,9 @@ class Route227App {
             article.classList.add("hidden");
           }
         });
-      });
+      };
+      tab.addEventListener("click", handler);
+      tab.addEventListener("touchend", handler);
     });
   }
 
@@ -479,31 +577,12 @@ class Route227App {
       alert(`「${query}」で検索しました。\n\n※この機能はデモ版です。実際の検索は未実装`);
     }
   }
-
-  // ─────────────────────────────────────────────
-  // GAS（Google Apps Script） に POST 送信するメソッド
-  async sendStampToSheet(data) {
-    try {
-      const response = await fetch(this.gasEndpoint, {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
-      const text = await response.text();
-      console.log("GAS 送信結果:", text);
-    } catch (err) {
-      console.error("スプレッドシート送信エラー:", err);
-    }
-  }
 }
 
 // ─────────────────────────────────────────────
 // アプリケーション初期化
-document.addEventListener("DOMContentLoaded", () => {
-  window.route227App = new Route227App();
-});
+window.route227App = new Route227App();
 
-// ─────────────────────────────────────────────
 // PWA 対応のためのサービスワーカー登録（現時点では未使用）
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
