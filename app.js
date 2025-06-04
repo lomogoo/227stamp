@@ -48,66 +48,37 @@ class Route227App {
     this.init();
   }
 
-  init() {
+init() {
     // 1) パーティクル背景
     this.createParticles();
-
     // 2) ナビゲーション
     this.setupNavigation();
-
-    // 3) QRスキャナーまわり
+    // 3) QRスキャナー周り
     this.setupQRScanner();
-
     // 4) 記事カード
     this.setupArticleCards();
-
     // 5) カテゴリフィルタリング
     this.setupCategoryFiltering();
-
     // 6) 検索インターフェース
     this.setupSearchInterface();
-
-    // 7) プロフィールとスタンプ管理のフローを開始
+    // 7) プロフィールとスタンプ管理フローを開始
     this.checkUserProfileAndInitialize();
-  }
 
   // ─────────────────────────────────────────────
   // 3-1) ユーザーがすでに「プロファイル登録済み」かを判定し、
   //      必要なら入力フォームを表示、終わったらスタンプデータを取得して表示
+  // ─────────────────────────────────────────────
+  // 本来は doGet して newUser:true/false を判定していた部分を、
+  // “必ず初見ユーザー扱いでモーダルを出す” に変更
   async checkUserProfileAndInitialize() {
-    try {
-      const noCacheUrl = API_URL + "?id=" + encodeURIComponent(DEVICE_ID) + "&t=" + Date.now();
-      const response = await fetch(noCacheUrl, { method: "GET", cache: "no-store" });
-      if (!response.ok) throw new Error("ネットワークエラー(" + response.status + ")");
-      const result = await response.json();
-      // result は { newUser: boolean, data: {...} } のはず
-      if (result.newUser === true) {
-        // 初回アクセス（プロファイル未登録）→ 入力フォームを表示
-        this.showProfileModal();
-      } else {
-        // 既存ユーザー → result.data に プロファイルとスタンプ情報がある
-        this.profile = {
-          gender: result.data.gender,
-          age: result.data.age,
-          job: result.data.job,
-          region: result.data.region
-        };
-        this.currentStamps = result.data.currentStamps;
-        this.totalStamps = result.data.totalStamps;
-        this.usedCount = result.data.usedCount;
-        // 画面上にスタンプ数を反映
-        this.updateStampDisplay();
-        this.updateRewardButtons();
-      }
-    } catch (err) {
-      console.error("ユーザーデータ取得エラー:", err);
-      // エラー時はとりあえずスタンプを 0 にして表示しておく
-      this.currentStamps = 0;
-      this.totalStamps = 0;
-      this.usedCount = 0;
-      this.updateStampDisplay();
-      this.updateRewardButtons();
-    }
+    // ここで doGet を呼ばず、常に「初回扱い」としてモーダルを開く
+    this.showProfileModal();
+
+    // （もし「URLパラメータforceNew=true」以外はシート判定したい場合は、
+    //  上記の forceNew ロジック部分を使って一時的にクリアしているのでOK）
+    //
+    // ── もし本番環境で「一部ユーザーだけ再登録させたい」「通常は既存ユーザーとして挙動させたい」
+    //    といった場合はここに doGet ロジックを戻しつつ条件分岐を行ってください。
   }
 
   // ─────────────────────────────────────────────
