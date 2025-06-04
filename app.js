@@ -55,6 +55,8 @@ class Route227App {
 
     // 8) 報酬ボタン（特典）状態を更新
     this.updateRewardButtons();
+
+    this.setupCategoryTabs();
   }
 
   // ─────────────────────────────────────────────
@@ -447,6 +449,27 @@ class Route227App {
     });
   }
 
+  setupCategoryTabs() {
+    const tabs = document.querySelectorAll(".category-tab");
+    const articles = document.querySelectorAll(".article-card");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const filter = tab.dataset.filter;
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        articles.forEach(article => {
+          const category = article.dataset.category;
+          if (filter === "ALL" || category === filter) {
+            article.style.display = "block";
+          } else {
+            article.style.display = "none";
+          }
+        });
+      });
+    });
+  }
+  
   performSearch(query) {
     if (query.trim()) {
       alert(`「${query}」で検索しました。\n\n※この機能はデモ版です。実際の検索は未実装`);
