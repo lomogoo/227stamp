@@ -44,8 +44,9 @@ class Route227App {
     // 4) QRスキャナーまわり
     this.setupQRScanner();
 
-    // 5) 記事カード
+    // 5) 記事カード（クリックとフィルタリング）
     this.setupArticleCards();
+    this.setupCategoryFiltering();
 
     // 6) 検索インターフェース
     this.setupSearchInterface();
@@ -418,6 +419,32 @@ class Route227App {
       card.addEventListener("click", () => {
         const url = card.dataset.url;
         if (url) window.open(url, "_blank");
+      });
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // カテゴリータブをクリックすると記事をフィルタリング
+  setupCategoryFiltering() {
+    const tabs = document.querySelectorAll(".category-tab");
+    const articles = document.querySelectorAll(".article-card");
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        // アクティブタブの切り替え
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const selected = tab.dataset.category; // all, event, news, shop
+
+        articles.forEach((article) => {
+          const cat = article.dataset.category;
+          if (selected === "all" || cat === selected) {
+            article.classList.remove("hidden");
+          } else {
+            article.classList.add("hidden");
+          }
+        });
       });
     });
   }
