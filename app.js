@@ -580,9 +580,23 @@ class Route227App {
 }
 
 // ─────────────────────────────────────────────
-// アプリケーション初期化
-// （DOMContentLoaded を待ってから new Route227App() を呼ぶ）
+// URLパラメータ「?forceNew=true」が付いていたらLocalStorageをクリア
+function shouldForceNewUser() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("forceNew") === "true";
+}
+
+// DOM が完全に読み込まれたタイミングでアプリを初期化
 document.addEventListener("DOMContentLoaded", () => {
+  if (shouldForceNewUser()) {
+    // forceNew=true の場合は ローカルストレージから deviceId などを削除して
+    // “初見ユーザー” 扱いにリセットする
+    localStorage.removeItem("deviceId");
+    localStorage.removeItem("currentStamps");
+    localStorage.removeItem("totalStamps");
+    localStorage.removeItem("usedCount");
+  }
+  // その後でアプリ本体を起動
   window.route227App = new Route227App();
 });
 
