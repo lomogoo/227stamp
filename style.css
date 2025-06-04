@@ -1331,6 +1331,40 @@ body {
   }
 }
 
+/* 既存 style.css の末尾などに追記してください */
+
+.category-tabs {
+  position: sticky;
+  top: 0;                              /* ビューポートの上部に貼りつく */
+  background-color: var(--cream-white); /* 下のコンテンツが透けないように */
+  z-index: 50;                          /* 他要素より手前に表示 */
+  display: flex;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* ほんのり影を付けると視認性アップ */
+}
+
+/* もし「セクション見出し（.section-header）」があって、スクロールすると隠れてほしくない場合、
+   .section-header と .category-tabs の順番や z-index を調整してください。 */
+.section-header {
+  position: relative;
+  z-index: 40; /* category-tabs より若干低めにしておく */
+}
+
+/* モバイル表示時にボタン間隔が狭くなる場合の微調整例 */
+@media (max-width: 480px) {
+  .category-tabs {
+    padding: var(--space-6) var(--space-12);
+    gap: var(--space-6);
+  }
+  .category-tab {
+    font-size: var(--font-size-sm);
+    padding: var(--space-6) var(--space-12);
+  }
+}
+
+
 /* 成功アニメーション */
 .stamp-success {
   animation: stampSuccess 0.6s ease-out;
