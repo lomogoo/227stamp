@@ -1069,39 +1069,6 @@ body {
   transform: translateY(-1px);
 }
 
-.category-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  padding: 0 16px;
-}
-
-.category-tab {
-  background: var(--warm-beige-dark);
-  color: var(--coffee-dark);
-  padding: 8px 20px;
-  border-radius: var(--radius-full);
-  border: 2px solid transparent;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.category-tab:hover {
-  background: var(--route227-orange-light);
-  color: #fff;
-}
-
-.category-tab.active {
-  background: var(--route227-orange);
-  color: #fff;
-  border-color: var(--route227-orange-dark);
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-}
-
 /* 固定下部ナビゲーション */
 .bottom-nav {
   position: fixed;
