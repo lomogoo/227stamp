@@ -778,6 +778,67 @@ body {
   opacity: 0.8;
 }
 
+/* ▼ プロフィール入力モーダル全体（背景を暗くして中央に配置） */
+.profile-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: none; /* 初期は非表示 */
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+/* ▼ モーダル内容（白いボックス） */
+.profile-modal-content {
+  background: var(--cream-white);
+  border-radius: var(--border-radius-card);
+  padding: var(--space-20);
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ▼ タイトル */
+.profile-modal-content h2 {
+  margin-bottom: var(--space-16);
+  font-size: var(--font-size-2xl);
+  color: var(--coffee-dark);
+  text-align: center;
+}
+
+/* ▼ フォーム内部のグループ */
+.profile-modal-content .form-group {
+  margin-bottom: var(--space-16);
+}
+
+.profile-modal-content label {
+  display: block;
+  margin-bottom: var(--space-8);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--coffee-dark);
+}
+
+.profile-modal-content select {
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-base);
+  border-radius: var(--border-radius-button);
+  border: 1px solid var(--color-border);
+  background: var(--cream-white);
+}
+
+/* ▼ プロフィール登録ボタン */
+.profile-modal-content .btn--primary {
+  width: 100%;
+  margin-top: var(--space-12);
+}
+
+
 /* カテゴリータブ */
 .category-tabs {
   display: flex;
