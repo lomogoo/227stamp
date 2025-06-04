@@ -58,7 +58,10 @@ class Route227App {
     try {
       // キャッシュ回避のために適当な timestamp を追加
       const noCacheUrl = `${API_URL}?id=${encodeURIComponent(DEVICE_ID)}&t=${Date.now()}`;
-      const res = await fetch(noCacheUrl, { method: "GET" });
+      const res = await fetch(noCacheUrl, { 
+        method: "GET",
+        cache: "no-store",
+        mode: "cors" });
       if (!res.ok) throw new Error("ネットワークエラー: " + res.status);
       const json = await res.json();
       if (json.newUser) {
@@ -127,7 +130,12 @@ class Route227App {
       const url = `${API_URL}?${params.toString()}`;
 
       try {
-        const res = await fetch(url, { method: "GET" });
+        const res = await fetch(url, { 
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          cache: "no-store",
+          mode: "cors"});
         if (!res.ok) throw new Error("ネットワークエラー: " + res.status);
         const json = await res.json();
         // 登録に成功したら modal を閉じ、スタンプ表示を更新
