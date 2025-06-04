@@ -581,7 +581,10 @@ class Route227App {
 
 // ─────────────────────────────────────────────
 // アプリケーション初期化
-window.route227App = new Route227App();
+// （DOMContentLoaded を待ってから new Route227App() を呼ぶ）
+document.addEventListener("DOMContentLoaded", () => {
+  window.route227App = new Route227App();
+});
 
 // PWA 対応のためのサービスワーカー登録（現時点では未使用）
 if ("serviceWorker" in navigator) {
