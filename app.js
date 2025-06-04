@@ -18,7 +18,7 @@ const DEVICE_ID = getOrCreateDeviceId();
  * ───── 2) GAS の Web アプリ URL ─────
  *    - デプロイ済みのウェブアプリ URL を貼り付けてください
  */
-const API_URL = "https://script.google.com/macros/s/AKfycbwECGkHxVUwvgxd4rpUtSSwtV-dpco0NannYvpEKXunV1okJXeVyctbxUppyQp_rDxq/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzqLPmAxaf48kHcfBqI_fCPdkG9-9VvPETF1PkEai4R0fz0RriQO9JN20Ul_PhxOpZ0/exec";
 
 class Route227App {
   constructor() {
