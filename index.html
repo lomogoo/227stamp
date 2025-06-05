@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <!-- Firebase App (core) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <!-- Firebase Auth (匿名認証) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <!-- Firebase Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script>
+  // Firebase の設定情報（あなたのプロジェクト用）
+  const firebaseConfig = {
+    apiKey: "AIzaSyDTx4xQfVYQpEBLYKs-yc-9QfZj5Xhq-4M",
+    authDomain: "stamp-b905f.firebaseapp.com",
+    projectId: "stamp-b905f",
+    storageBucket: "stamp-b905f.appspot.com",
+    messagingSenderId: "938526053758",
+    appId: "1:938526053758:web:e2b91c39677fd70e43cf2f",
+    measurementId: "G-KMLVMMXMQE"
+  };
+  // Firebase を初期化
+  firebase.initializeApp(firebaseConfig);
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Route227 Cafe - スタンプカード</title>
