@@ -1,8 +1,37 @@
-/**
- * ───── 1) 端末ID を localStorage で管理 ─────
- *    - 初回アクセス時に randomUUID() で生成して localStorage に保存
- *    - 2回目以降は同じ ID を使う
- */
+// app.js (type="module")
+
+/* ===========================================
+   1) Firebase SDK の読み込み
+   =========================================== */
+// （1）Firebase App と Firestore を CDN 経由でインポート
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+// （2）Firebase の設定情報
+const firebaseConfig = {
+  apiKey: "AIzaSyDTx4xQfVYQpEBLYKs-yc-9QfZj5Xhq-4M",
+  authDomain: "stamp-b905f.firebaseapp.com",
+  projectId: "stamp-b905f",
+  storageBucket: "stamp-b905f.appspot.com",
+  messagingSenderId: "938526053758",
+  appId: "1:938526053758:web:e2b91c39677fd70e43cf2f",
+  measurementId: "G-KMLVMMXMQE"
+};
+
+// （3）Firebase 初期化および Firestore インスタンス取得
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ===========================================
+   2) 端末ID を localStorage で管理
+   =========================================== */
 function getOrCreateDeviceId() {
   const KEY = "deviceId";
   let deviceId = localStorage.getItem(KEY);
@@ -14,24 +43,26 @@ function getOrCreateDeviceId() {
 }
 const DEVICE_ID = getOrCreateDeviceId();
 
-/**
- * ───── 2) GAS の Web アプリ URL ─────
- *    - デプロイ済みのウェブアプリ URL を貼り付けてください
- */
-const API_URL = "https://script.google.com/macros/s/AKfycbzqLPmAxaf48kHcfBqI_fCPdkG9-9VvPETF1PkEai4R0fz0RriQO9JN20Ul_PhxOpZ0/exec";
+// Firestore 上のドキュメントパスを返す関数
+function userDocRef() {
+  return doc(db, "users", `device_${DEVICE_ID}`);
+}
 
+/* ===========================================
+   3) メインアプリクラス
+   =========================================== */
 class Route227App {
   constructor() {
     this.currentSection = "227";
 
-    // ローカルにも念のためキャッシュしておく
+    // localStorage にキャッシュしておく
     this.totalStamps   = parseInt(localStorage.getItem("totalStamps")   || "0", 10);
     this.currentStamps = parseInt(localStorage.getItem("currentStamps") || "0", 10);
     this.usedCount     = parseInt(localStorage.getItem("usedCount")     || "0", 10);
 
     this.profile = { gender: "", age: "", job: "", region: "" };
 
-    // QR スキャン用
+    // QR コード文字列
     this.qrCode = "ROUTE227_STAMP_2025";
     this.isScanning = false;
     this.videoStream = null;
@@ -42,61 +73,67 @@ class Route227App {
   }
 
   init() {
+    // 1) パーティクル背景
     this.createParticles();
+    // 2) ナビゲーション切り替え
     this.setupNavigation();
+    // 3) QR スキャナー
     this.setupQRScanner();
+    // 4) 記事カードのクリックイベント
     this.setupArticleCards();
+    // 5) カテゴリフィルタ
     this.setupCategoryFiltering();
+    // 6) 検索インターフェース
     this.setupSearchInterface();
+    // 7) Firestore からユーザー情報取得 ＆ 初回チェック
     this.checkUserProfileAndInitialize();
   }
 
-  // ─────────────────────────────────────────────
-  // 3-1) プロフィール登録済みかどうかをサーバーから取得し、
-  //      新規ユーザーなら最初にモーダルを出す
+  /* ===========================================
+     3-1) Firestore からユーザー情報を取得
+           ────────────────────────────
+     - 存在しなければ “新規ユーザー” としてモーダルを表示
+     - 存在すれば currentStamps, totalStamps, usedCount, プロフィールをセット
+  =========================================== */
   async checkUserProfileAndInitialize() {
     try {
-      // キャッシュ回避のために適当な timestamp を追加
-      const noCacheUrl = `${API_URL}?id=${encodeURIComponent(DEVICE_ID)}&t=${Date.now()}`;
-      const res = await fetch(noCacheUrl, { 
-        method: "GET",
-        cache: "no-store",
-        mode: "cors" });
-      if (!res.ok) throw new Error("ネットワークエラー: " + res.status);
-      const json = await res.json();
-      if (json.newUser) {
-        // プロフィール未登録 → モーダルを出す
+      const ref = userDocRef();
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists()) {
+        // Firestore にまだドキュメントがない → 新規ユーザー扱い
         this.showProfileModal();
       } else {
-        // 既存ユーザー → データを読み込んで画面に反映
-        const d = json.data;
+        // 既存ユーザー
+        const data = snapshot.data();
         this.profile = {
-          gender: d.gender,
-          age:    d.age,
-          job:    d.job,
-          region: d.region
+          gender: data.gender || "",
+          age:    data.age    || "",
+          job:    data.job    || "",
+          region: data.region || ""
         };
-        this.currentStamps = d.currentStamps;
-        this.totalStamps   = d.totalStamps;
-        this.usedCount     = d.usedCount;
+        this.currentStamps = data.currentStamps  || 0;
+        this.totalStamps   = data.totalStamps    || 0;
+        this.usedCount     = data.usedCount      || 0;
+
+        // localStorage にバックアップしておく
+        localStorage.setItem("currentStamps", this.currentStamps);
+        localStorage.setItem("totalStamps",   this.totalStamps);
+        localStorage.setItem("usedCount",     this.usedCount);
+
+        // 画面に反映
         this.updateStampDisplay();
         this.updateRewardButtons();
       }
     } catch (err) {
-      console.error("ユーザーデータ取得エラー:", err);
-      // エラー時はとりあえず空の状態で表示しておく
-      this.currentStamps = 0;
-      this.totalStamps   = 0;
-      this.usedCount     = 0;
-      this.updateStampDisplay();
-      this.updateRewardButtons();
-      // 必要ならモーダルを強制表示してもいい
+      console.error("Firestore からの取得エラー:", err);
+      // エラー時はモーダルを強制表示してプロフィール登録させる
       this.showProfileModal();
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 3-2) プロフィール入力モーダルを表示し、完了後に GET で登録する
+  /* ===========================================
+     3-2) プロフィール入力モーダルを表示 → 入力後 Firestore に保存
+  =========================================== */
   showProfileModal() {
     const modal = document.getElementById("profile-modal");
     modal.style.display = "flex";
@@ -115,71 +152,65 @@ class Route227App {
         return;
       }
 
-      // GET のクエリパラメータにすべて詰め込む
-      const params = new URLSearchParams({
-        id: DEVICE_ID,
-        currentStamps: "0",
-        totalStamps: "0",
-        usedCount: "0",
-        gender: gender,
-        age:    age,
-        job:    job,
-        region: region,
-        t: String(Date.now()) // キャッシュ回避
-      });
-      const url = `${API_URL}?${params.toString()}`;
-
+      // Firestore にドキュメントを新規作成
       try {
-        const res = await fetch(url, { 
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          cache: "no-store",
-          mode: "cors"});
-        if (!res.ok) throw new Error("ネットワークエラー: " + res.status);
-        const json = await res.json();
-        // 登録に成功したら modal を閉じ、スタンプ表示を更新
+        const ref = userDocRef();
+        await setDoc(ref, {
+          currentStamps: 0,
+          totalStamps:   0,
+          usedCount:     0,
+          gender: gender,
+          age:    age,
+          job:    job,
+          region: region,
+          createdAt: serverTimestamp()
+        });
+
+        // プロフィールとスタンプ数をローカル変数・localStorage にセット
         this.profile = { gender, age, job, region };
         this.currentStamps = 0;
         this.totalStamps   = 0;
         this.usedCount     = 0;
+        localStorage.setItem("currentStamps", this.currentStamps);
+        localStorage.setItem("totalStamps",   this.totalStamps);
+        localStorage.setItem("usedCount",     this.usedCount);
+
+        // モーダルを閉じて画面に反映
         modal.style.display = "none";
         this.updateStampDisplay();
         this.updateRewardButtons();
       } catch (err) {
-        console.error("プロフィール登録エラー:", err);
+        console.error("Firestore への登録エラー:", err);
         alert("プロフィール登録に失敗しました。もう一度お試しください。");
       }
     });
   }
 
-  // ─────────────────────────────────────────────
-  // 3-3) スタンプ情報をサーバーに GET で送信する（QRコード成功時に呼び出す）
-  async updateStampDataToSheet(newCurrent, newTotal, newUsed) {
-    const p = new URLSearchParams({
-      id: DEVICE_ID,
-      currentStamps: String(newCurrent),
-      totalStamps:   String(newTotal),
-      usedCount:     String(newUsed),
-      gender: this.profile.gender,
-      age:    this.profile.age,
-      job:    this.profile.job,
-      region: this.profile.region,
-      t: String(Date.now())
-    });
-    const url = `${API_URL}?${p.toString()}`;
+  /* ===========================================
+     3-3) スタンプ情報を Firestore に更新する
+           ────────────────────────────
+     - QR コードスキャン成功時に呼び出し
+     - Firestore 上のドキュメントを updateDoc
+  =========================================== */
+  async updateStampDataToFirestore(newCurrent, newTotal, newUsed) {
     try {
-      const res = await fetch(url, { method: "GET" });
-      if (!res.ok) throw new Error("ネットワークエラー: " + res.status);
-      const json = await res.json();
-      console.log("シート更新結果:", json);
+      const ref = userDocRef();
+      await updateDoc(ref, {
+        currentStamps: newCurrent,
+        totalStamps:   newTotal,
+        usedCount:     newUsed,
+        updatedAt: serverTimestamp()
+      });
+      console.log("Firestore 更新完了:", { currentStamps: newCurrent, totalStamps: newTotal, usedCount: newUsed });
     } catch (err) {
-      console.error("スタンプ更新エラー:", err);
+      console.error("Firestore 更新エラー:", err);
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 以下、省略せずに既存コードをそのまま – パーティクル背景など
+  /* ===========================================
+     以下は、もともとあったままのコード
+     パーティクル背景、QR読み取りなど
+  =========================================== */
   createParticles() {
     const particlesContainer = document.getElementById("particles");
     const particleCount = 20;
@@ -234,6 +265,7 @@ class Route227App {
     modal.addEventListener("click", (e) => {
       if (e.target === modal) this.closeQRScanner();
     });
+    // カンバスを動的に作成
     this.scanCanvas = document.createElement("canvas");
     this.scanCanvasCtx = this.scanCanvas.getContext("2d");
   }
@@ -295,8 +327,11 @@ class Route227App {
   }
 
   addStamp() {
+    // localStorage から currentStamps を +1
     let curr = parseInt(localStorage.getItem("currentStamps") || "0", 10);
     curr += 1;
+
+    // 6個たまったら usedCount +1, curr=0 に戻す
     if (curr >= 6) {
       curr = 0;
       this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10) + 1;
@@ -304,17 +339,25 @@ class Route227App {
     }
     localStorage.setItem("currentStamps", curr.toString());
     this.currentStamps = curr;
+
+    // totalStamps を +1
     this.totalStamps = parseInt(localStorage.getItem("totalStamps") || "0", 10) + 1;
     localStorage.setItem("totalStamps", this.totalStamps.toString());
+
+    // 画面反映
     this.updateStampDisplay();
     this.updateRewardButtons();
+
+    // 成功アニメーション
     const hole = document.querySelector(`[data-index="${this.currentStamps - 1}"]`);
     if (hole) {
       hole.classList.add("filled", "stamp-success");
       setTimeout(() => hole.classList.remove("stamp-success"), 600);
     }
     this.showSuccessMessage();
-    this.updateStampDataToSheet(this.currentStamps, this.totalStamps, this.usedCount);
+
+    // Firestore に更新を送る
+    this.updateStampDataToFirestore(this.currentStamps, this.totalStamps, this.usedCount);
   }
 
   updateStampDisplay() {
@@ -348,12 +391,12 @@ class Route227App {
     if (this.currentStamps >= pts) {
       this.currentStamps -= pts;
       localStorage.setItem("currentStamps", this.currentStamps.toString());
-      this.usedCount = parseInt(localStorage.getItem("usedCount") || "0", 10) + 1;
+      this.usedCount     = parseInt(localStorage.getItem("usedCount") || "0", 10) + 1;
       localStorage.setItem("usedCount", this.usedCount.toString());
       this.updateStampDisplay();
       this.updateRewardButtons();
       alert(`おめでとうございます！報酬と交換しました。残りスタンプ数: ${this.currentStamps}`);
-      this.updateStampDataToSheet(this.currentStamps, this.totalStamps, this.usedCount);
+      this.updateStampDataToFirestore(this.currentStamps, this.totalStamps, this.usedCount);
     }
   }
 
@@ -446,18 +489,9 @@ class Route227App {
   }
 }
 
-
-// ─────────────────────────────────────────────
-// DOM 準備が終わってからアプリを起動
+/* ===========================================
+   4) DOM 準備が終わってから Route227App を起動
+=========================================== */
 document.addEventListener("DOMContentLoaded", () => {
   window.route227App = new Route227App();
 });
-
-// サービスワーカー関係（未使用）
-// if ("serviceWorker" in navigator) {
-//   window.addEventListener("load", () => {
-//     navigator.serviceWorker.register('/sw.js')
-//       .then(reg => console.log('SW registered'))
-//       .catch(err => console.log('SW registration failed'));
-//   });
-// }
