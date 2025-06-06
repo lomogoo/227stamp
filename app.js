@@ -1,153 +1,146 @@
-class StampApp {
-  constructor() {
-    this.currentSection = "227";
-    this.stamps227 = parseInt(localStorage.getItem("stamps227") || "0", 10);
-    this.stampsFood = parseInt(localStorage.getItem("stampsFood") || "0", 10);
-    this.qrCode = "ROUTE227_STAMP_2025"; // 正解のQRコード
-    this.scanCanvas = document.createElement("canvas");
-    this.scanCanvasCtx = this.scanCanvas.getContext("2d");
-    this.isScanning = false;
-    this.videoStream = null;
+// app.js
 
-    this.init();
+const DEVICE_ID = getOrCreateDeviceId();
+let currentTab = "all";
+let currentSection = "227";
+
+function getOrCreateDeviceId() {
+  const KEY = "deviceId";
+  let deviceId = localStorage.getItem(KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(KEY, deviceId);
   }
+  return deviceId;
+}
 
-  init() {
-    this.setupNavigation();
-    this.setupStampDisplay();
-    this.setupQRScanner();
-    this.setupCategoryFiltering();
-  }
+// カテゴリ切替
+function setupCategoryTabs() {
+  const tabs = document.querySelectorAll(".category-tab");
+  const cards = document.querySelectorAll(".article-card");
 
-  setupNavigation() {
-    document.querySelectorAll(".nav-tab").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".nav-tab").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".content-section").forEach(sec => sec.classList.remove("active"));
-        btn.classList.add("active");
-        const sec = document.getElementById(`section-${btn.dataset.section}`);
-        if (sec) sec.classList.add("active");
-        this.currentSection = btn.dataset.section;
-        this.updateStampDisplay();
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const category = tab.dataset.category;
+      currentTab = category;
+      cards.forEach(card => {
+        if (category === "all" || card.dataset.category === category) {
+          card.classList.remove("hidden");
+        } else {
+          card.classList.add("hidden");
+        }
       });
     });
-  }
+  });
+}
 
-  setupStampDisplay() {
-    this.updateStampDisplay();
-    document.querySelectorAll("#scan-qr-btn").forEach(btn => {
-      btn.addEventListener("click", () => this.openQRScanner());
+// セクション切替（下部メニュー）
+function setupNavMenu() {
+  const navTabs = document.querySelectorAll(".nav-tab");
+  navTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.section;
+      document.querySelectorAll(".content-section").forEach(s => s.classList.remove("active"));
+      document.getElementById(`section-${target}`).classList.add("active");
+      currentSection = target;
     });
-  }
+  });
+}
 
-  updateStampDisplay() {
-    const count = this.currentSection === "227" ? this.stamps227 : this.stampsFood;
-    document.querySelectorAll(`#section-${this.currentSection} #stamp-count`).forEach(el => {
-      el.textContent = count;
+// QRコード読み取り
+let isScanning = false;
+let videoStream = null;
+let scanCanvas = null;
+let scanCanvasCtx = null;
+const QR_CODE = "ROUTE227_STAMP_2025";
+
+function setupQRScanner() {
+  const scanBtn = document.getElementById("scan-qr-btn");
+  const closeBtn = document.getElementById("qr-close-btn");
+  const modal = document.getElementById("qr-modal");
+
+  scanBtn.addEventListener("click", () => openQRScanner());
+  closeBtn.addEventListener("click", () => closeQRScanner());
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeQRScanner();
+  });
+
+  scanCanvas = document.createElement("canvas");
+  scanCanvasCtx = scanCanvas.getContext("2d");
+}
+
+function openQRScanner() {
+  const modal = document.getElementById("qr-modal");
+  const video = document.getElementById("qr-video");
+  const errorDiv = document.getElementById("qr-error");
+  modal.classList.add("active");
+  errorDiv.textContent = "";
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(stream => {
+      videoStream = stream;
+      video.srcObject = stream;
+      isScanning = true;
+      requestAnimationFrame(tickQRCode);
+    })
+    .catch(err => {
+      console.error("カメラアクセスエラー:", err);
+      errorDiv.textContent = "カメラにアクセスできません。";
     });
+}
 
-    document.querySelectorAll(`#section-${this.currentSection} .stamp-hole`).forEach((el, i) => {
-      el.classList.toggle("filled", i < count);
-    });
-  }
-
-  setupCategoryFiltering() {
-    const tabs = document.querySelectorAll(".category-tab");
-    const articles = document.querySelectorAll(".article-card");
-    tabs.forEach(tab => {
-      tab.addEventListener("click", () => {
-        tabs.forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        const cat = tab.dataset.category;
-        articles.forEach(card => {
-          const cardCat = card.dataset.category;
-          card.classList.toggle("hidden", cat !== "all" && cat !== cardCat);
-        });
-      });
-    });
-  }
-
-  setupQRScanner() {
-    const modal = document.getElementById("qr-modal");
-    const video = document.getElementById("qr-video");
-    const closeBtn = document.getElementById("qr-close-btn");
-    const errorDiv = document.getElementById("qr-error");
-
-    closeBtn.addEventListener("click", () => this.closeQRScanner());
-
-    modal.addEventListener("click", e => {
-      if (e.target === modal) this.closeQRScanner();
-    });
-  }
-
-  async openQRScanner() {
-    const modal = document.getElementById("qr-modal");
-    const video = document.getElementById("qr-video");
-    const errorDiv = document.getElementById("qr-error");
-
-    try {
-      modal.classList.add("active");
-      this.videoStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-      this.isScanning = true;
-      video.srcObject = this.videoStream;
-      video.setAttribute("playsinline", true);
-      video.play();
-      requestAnimationFrame(() => this.tickQRCode());
-    } catch (err) {
-      errorDiv.textContent = "カメラにアクセスできません";
-    }
-  }
-
-  tickQRCode() {
-    if (!this.isScanning) return;
-    const video = document.getElementById("qr-video");
-    const errorDiv = document.getElementById("qr-error");
-
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      this.scanCanvas.width = video.videoWidth;
-      this.scanCanvas.height = video.videoHeight;
-      this.scanCanvasCtx.drawImage(video, 0, 0);
-      const imageData = this.scanCanvasCtx.getImageData(0, 0, this.scanCanvas.width, this.scanCanvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      if (code && code.data === this.qrCode) {
-        this.addStamp();
-        this.closeQRScanner();
-        return;
-      } else if (code) {
-        errorDiv.textContent = "無効なQRコードです";
-      }
-    }
-
-    requestAnimationFrame(() => this.tickQRCode());
-  }
-
-  closeQRScanner() {
-    const modal = document.getElementById("qr-modal");
-    const video = document.getElementById("qr-video");
-    this.isScanning = false;
-    modal.classList.remove("active");
-    if (this.videoStream) {
-      this.videoStream.getTracks().forEach(track => track.stop());
-    }
+function closeQRScanner() {
+  const modal = document.getElementById("qr-modal");
+  const video = document.getElementById("qr-video");
+  modal.classList.remove("active");
+  isScanning = false;
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
     video.srcObject = null;
-    document.getElementById("qr-error").textContent = "";
-  }
-
-  addStamp() {
-    if (this.currentSection === "227") {
-      this.stamps227 = Math.min(this.stamps227 + 1, 6);
-      localStorage.setItem("stamps227", this.stamps227);
-    } else {
-      this.stampsFood = Math.min(this.stampsFood + 1, 6);
-      localStorage.setItem("stampsFood", this.stampsFood);
-    }
-    this.updateStampDisplay();
-    alert("スタンプが追加されました！");
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  new StampApp();
+function tickQRCode() {
+  if (!isScanning) return;
+  const video = document.getElementById("qr-video");
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    scanCanvas.width = video.videoWidth;
+    scanCanvas.height = video.videoHeight;
+    scanCanvasCtx.drawImage(video, 0, 0);
+    const imageData = scanCanvasCtx.getImageData(0, 0, video.videoWidth, video.videoHeight);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    if (code && code.data === QR_CODE) {
+      addStamp();
+      closeQRScanner();
+      return;
+    }
+  }
+  requestAnimationFrame(tickQRCode);
+}
+
+// スタンプの管理
+function addStamp() {
+  let current = parseInt(localStorage.getItem("currentStamps") || "0", 10);
+  current = (current + 1) % 6;
+  localStorage.setItem("currentStamps", current);
+  updateStampDisplay();
+}
+
+function updateStampDisplay() {
+  const count = parseInt(localStorage.getItem("currentStamps") || "0", 10);
+  document.getElementById("stamp-count").textContent = count;
+  document.querySelectorAll(".stamp-hole").forEach((el, i) => {
+    el.classList.toggle("filled", i < count);
+  });
+}
+
+// 起動処理
+window.addEventListener("DOMContentLoaded", () => {
+  setupCategoryTabs();
+  setupNavMenu();
+  setupQRScanner();
+  updateStampDisplay();
 });
