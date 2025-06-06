@@ -1,127 +1,130 @@
 /* style.css */
 
-body {
-  font-family: 'Helvetica Neue', sans-serif;
+/* リセットと共通スタイル */
+* {
   margin: 0;
   padding: 0;
-  background: #f9f9f9;
-  color: #333;
+  box-sizing: border-box;
+  font-family: 'Helvetica Neue', sans-serif;
+}
+
+body {
+  background-color: #fff;
+  color: #111;
+  font-size: 16px;
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
 }
 
 header {
-  background-color: #227;
-  color: white;
-  padding: 1rem;
-  text-align: center;
+  padding: 16px;
+  font-size: 1.4rem;
+  font-weight: bold;
+  background: #fff;
+  border-bottom: 1px solid #ccc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-nav {
+/* カテゴリタブ */
+.category-tabs {
   display: flex;
-  justify-content: center;
-  background: #eee;
+  justify-content: space-around;
+  background: #f9f9f9;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 60px;
+  z-index: 9;
 }
 
-.nav-tab {
+.category-tab {
   flex: 1;
-  padding: 1rem;
-  background: #ddd;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.nav-tab.active {
-  background: #227;
-  color: white;
-}
-
-.content-section {
-  display: none;
-  padding: 1rem;
-}
-
-.content-section.active {
-  display: block;
-}
-
-.stamp-area {
   text-align: center;
-  margin-bottom: 2rem;
+  padding: 12px 0;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+}
+
+.category-tab.active {
+  border-bottom: 2px solid #111;
+  color: #111;
+}
+
+/* 投稿カード風 */
+.articles {
+  overflow-y: scroll;
+  height: calc(100vh - 120px);
+  padding: 8px 0;
+}
+
+.article-card {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.article-card:hover {
+  background: #f0f0f0;
+}
+
+/* スタンプカード */
+.stamp-area {
+  padding: 16px;
+  background: #fff;
+  border-top: 1px solid #ddd;
 }
 
 .stamp-holes {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-  margin: 1rem 0;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .stamp-hole {
-  width: 40px;
-  height: 40px;
-  border: 2px solid #227;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background-color: white;
+  border: 2px solid #aaa;
+  background: #fff;
 }
 
 .stamp-hole.filled {
-  background-color: #227;
+  background: #fbbf24;
+  border-color: #f59e0b;
 }
 
-button {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+/* QRボタン */
+#scan-qr-btn {
+  background: #111;
+  color: #fff;
   border: none;
-  border-radius: 5px;
-  background: #227;
-  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
+  display: block;
+  margin: 0 auto;
 }
 
-.category-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.category-tab {
-  background: #ccc;
-}
-
-.category-tab.active {
-  background: #227;
-  color: white;
-}
-
-.articles {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0 1rem;
-}
-
-.article-card {
-  background: white;
-  border: 1px solid #ccc;
-  padding: 1rem;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.article-card.hidden {
-  display: none;
-}
-
+/* QRモーダル */
 #qr-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
   display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
   justify-content: center;
   align-items: center;
-  flex-direction: column;
   z-index: 1000;
+  flex-direction: column;
 }
 
 #qr-modal.active {
@@ -131,11 +134,54 @@ button {
 #qr-video {
   width: 80%;
   max-width: 400px;
-  border: 4px solid white;
-  border-radius: 10px;
+  border-radius: 8px;
+}
+
+#qr-close-btn {
+  margin-top: 16px;
+  background: #fff;
+  color: #111;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 #qr-error {
-  color: red;
-  margin-top: 1rem;
+  color: #f87171;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+/* ナビゲーション */
+nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #fff;
+  display: flex;
+  border-top: 1px solid #ccc;
+}
+
+.nav-tab {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  font-weight: 500;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+}
+
+.nav-tab.active {
+  border-top: 2px solid #111;
+  color: #111;
+}
+
+/* セクション表示制御 */
+.content-section {
+  display: none;
+}
+
+.content-section.active {
+  display: block;
 }
