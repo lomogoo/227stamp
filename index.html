@@ -1,280 +1,76 @@
+<!-- ✅ index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <!-- Firebase App (core) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <!-- Firebase Auth (匿名認証) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <!-- Firebase Firestore -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-  <script>
-  // Firebase の設定情報（あなたのプロジェクト用）
-  const firebaseConfig = {
-    apiKey: "AIzaSyDTx4xQfVYQpEBLYKs-yc-9QfZj5Xhq-4M",
-    authDomain: "stamp-b905f.firebaseapp.com",
-    projectId: "stamp-b905f",
-    storageBucket: "stamp-b905f.appspot.com",
-    messagingSenderId: "938526053758",
-    appId: "1:938526053758:web:e2b91c39677fd70e43cf2f",
-    measurementId: "G-KMLVMMXMQE"
-  };
-  // Firebase を初期化
-  firebase.initializeApp(firebaseConfig);
-  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Route227 Cafe - スタンプカード</title>
+  <title>Route227 スタンプカード</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-  <!-- 後で app.js を読み込む -->
+  <script defer type="module" src="app.js"></script>
 </head>
 <body>
-  <!-- ▼ プロファイル入力モーダル -->
-  <div class="profile-modal" id="profile-modal">
-    <div class="profile-modal-content">
-      <h2>初めての方はプロフィールを入力してください</h2>
-      <form id="profile-form">
-        <div class="form-group">
-          <label for="gender-select">性別</label>
-          <select id="gender-select" required>
-            <option value="" disabled selected>選択してください</option>
-            <option value="男性">男性</option>
-            <option value="女性">女性</option>
-            <option value="その他">その他</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="age-select">年齢</label>
-          <select id="age-select" required>
-            <option value="" disabled selected>選択してください</option>
-            <option value="10代">10代</option>
-            <option value="20代">20代</option>
-            <option value="30代">30代</option>
-            <option value="40代">40代</option>
-            <option value="50代以上">50代以上</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="job-select">職業</label>
-          <select id="job-select" required>
-            <option value="" disabled selected>選択してください</option>
-            <option value="学生">学生</option>
-            <option value="会社員">会社員</option>
-            <option value="自営業">自営業</option>
-            <option value="その他">その他</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="region-select">お住まいの地域</label>
-          <select id="region-select" required>
-            <option value="" disabled selected>選択してください</option>
-            <option value="仙台市青葉区">仙台市青葉区</option>
-            <option value="仙台市若林区">仙台市若林区</option>
-            <option value="仙台市宮城野区">仙台市宮城野区</option>
-            <option value="仙台市太白区">仙台市太白区</option>
-            <option value="仙台市泉区">仙台市泉区</option>
-            <option value="宮城県（仙台市外）">宮城県（仙台市外）</option>
-            <option value="宮城県外">宮城県外</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn--primary">登録して開始</button>
-      </form>
+  <!-- 属性入力モーダル -->
+  <div id="profile-modal" class="modal">
+    <form id="profile-form">
+      <h2>あなたについて教えてください</h2>
+      <label>性別：<select id="gender-select"><option value="">選択</option><option value="男性">男性</option><option value="女性">女性</option></select></label>
+      <label>年齢：<select id="age-select"><option value="">選択</option><option value="10代">10代</option><option value="20代">20代</option><option value="30代">30代</option><option value="40代以上">40代以上</option></select></label>
+      <label>職業：<select id="job-select"><option value="">選択</option><option value="学生">学生</option><option value="会社員">会社員</option><option value="その他">その他</option></select></label>
+      <label>居住地：<input type="text" id="region-select" placeholder="例：仙台市太白区" /></label>
+      <button type="submit">登録</button>
+    </form>
+  </div>
+
+  <!-- スタンプカード画面 -->
+  <div id="section-227" class="content-section active">
+    <h1>Route227 スタンプカード</h1>
+    <div id="stamp-card">
+      <div id="stamp-count">0</div>
+      <div class="stamp-holes">
+        <div class="stamp-hole" data-index="0"></div>
+        <div class="stamp-hole" data-index="1"></div>
+        <div class="stamp-hole" data-index="2"></div>
+        <div class="stamp-hole" data-index="3"></div>
+        <div class="stamp-hole" data-index="4"></div>
+        <div class="stamp-hole" data-index="5"></div>
+      </div>
+      <button id="scan-qr-btn">QRでスタンプを貯める</button>
     </div>
-  </div>
-  <!-- ▲ プロファイル入力モーダル -->
 
-  <div class="app-container">
-    <!-- パーティクル背景 -->
-    <div class="particles" id="particles"></div>
-
-    <!-- メインコンテンツ -->
-    <main class="main-content">
-      <!-- 227セクション（デフォルト表示） -->
-      <section id="section-227" class="content-section active">
-        <div class="container">
-          <header class="section-header">
-            <h1 class="section-title">Route227</h1>
-            <p class="section-subtitle">地域の魅力的なイベントや情報をお届け</p>
-          </header>
-
-          <!-- カテゴリタブ -->
-          <div class="category-tabs">
-            <button class="category-tab active" data-category="all">トップ</button>
-            <button class="category-tab" data-category="event">イベント</button>
-            <button class="category-tab" data-category="news">ニュース</button>
-            <button class="category-tab" data-category="shop">お店</button>
-          </div>
-
-          <!-- 記事グリッド -->
-          <div class="articles-grid">
-            <!-- 既存の article-card 要素 5つ -->
-            <article class="article-card" data-url="https://machico.mu/jump/ad/114381" data-category="news">
-              <div class="article-image"><div class="placeholder-image">🏞️</div></div>
-              <div class="article-content">
-                <h3 class="article-title">東北227自治体魅力発信プロジェクト</h3>
-                <p class="article-description">地域の隠れた名所や特産品を紹介する包括的な情報プラットフォーム</p>
-                <span class="article-date">2025年6月</span>
-              </div>
-            </article>
-            <article class="article-card" data-url="https://machico.mu/special/detail/2727" data-category="event">
-              <div class="article-image"><div class="placeholder-image">🎉</div></div>
-              <div class="article-content">
-                <h3 class="article-title">Bang BAR SENDAI第5弾</h3>
-                <p class="article-description">一番町四丁目商店街で5月30日から開催される、山形さくらんぼPRまつり併催の飲食イベント</p>
-                <span class="article-date">5月30日開催</span>
-              </div>
-            </article>
-            <article class="article-card" data-url="https://machico.mu/special/detail/2691" data-category="event">
-              <div class="article-image"><div class="placeholder-image">🎪</div></div>
-              <div class="article-content">
-                <h3 class="article-title">仙臺横丁フェス2025</h3>
-                <p class="article-description">6月13日から15日まで勾当台公園で開催される横丁文化体験イベント</p>
-                <span class="article-date">6月13-15日</span>
-              </div>
-            </article>
-            <article class="article-card" data-url="https://machico.mu/special/detail/2704" data-category="event">
-              <div class="article-image"><div class="placeholder-image">🍷</div></div>
-              <div class="article-content">
-                <h3 class="article-title">バル仙台2025</h3>
-                <p class="article-description">6月20日から22日まで開催される東北ワイン祭り</p>
-                <span class="article-date">6月20-22日</span>
-              </div>
-            </article>
-            <article class="article-card" data-url="https://machico.mu/special/detail/1742#oshamachi" data-category="news">
-              <div class="article-image"><div class="placeholder-image">📻</div></div>
-              <div class="article-content">
-                <h3 class="article-title">machico×ラジオ3コラボ</h3>
-                <p class="article-description">webメディアと音声メディア（76.2MHz）の継続的なコラボレーション企画</p>
-                <span class="article-date">継続中</span>
-              </div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- FoodTruck セクション -->
-      <section id="section-foodtruck" class="content-section">
-        <div class="container">
-          <header class="section-header">
-            <h1 class="section-title">Route227 スタンプカード</h1>
-            <p class="section-subtitle">おいしい食事でスタンプを集めよう！</p>
-          </header>
-
-          <!-- スタンプカード本体 -->
-          <div class="stamp-card">
-            <div class="stamp-grid">
-              <div class="stamp-hole" data-index="0"></div>
-              <div class="stamp-hole" data-index="1"></div>
-              <div class="stamp-hole" data-index="2"></div>
-              <div class="stamp-hole" data-index="3"></div>
-              <div class="stamp-hole" data-index="4"></div>
-              <div class="stamp-hole" data-index="5"></div>
-            </div>
-            <!-- ここに currentStamps を表示 -->
-            <div class="stamp-count">
-              <span id="stamp-count">0</span> / 6 スタンプ
-            </div>
-            <button class="btn btn--primary stamp-button" id="scan-qr-btn">
-              📱 スタンプを貯める
-            </button>
-          </div>
-
-          <!-- 報酬交換セクション -->
-          <div class="rewards-section">
-            <h2>スタンプ交換</h2>
-            <div class="rewards-grid">
-              <div class="reward-card" data-points="3">
-                <div class="reward-icon">☕</div>
-                <div class="reward-info">
-                  <h3>コーヒー1杯</h3>
-                  <p>3スタンプで交換</p>
-                </div>
-                <button class="btn btn--secondary reward-claim-btn" disabled>交換する</button>
-              </div>
-              <div class="reward-card" data-points="6">
-                <div class="reward-icon">🍛</div>
-                <div class="reward-info">
-                  <h3>東北野菜カレー1杯</h3>
-                  <p>6スタンプで交換</p>
-                </div>
-                <button class="btn btn--secondary reward-claim-btn" disabled>交換する</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- AI検索セクション -->
-      <section id="section-aisearch" class="content-section">
-        <div class="container">
-          <header class="section-header">
-            <h1 class="section-title">AI検索</h1>
-            <p class="section-subtitle">東北の情報を AI で検索</p>
-          </header>
-          <div class="search-interface">
-            <div class="search-box">
-              <input type="text" class="form-control search-input" placeholder="東北の観光スポット、グルメ、イベントを検索..." id="search-input">
-              <button class="btn btn--primary search-btn" id="search-btn">🔍</button>
-            </div>
-            <div class="search-history">
-              <h3>最近の検索</h3>
-              <div class="search-tags">
-                <span class="search-tag">仙台グルメ</span>
-                <span class="search-tag">温泉</span>
-                <span class="search-tag">桜名所</span>
-              </div>
-            </div>
-            <div class="popular-searches">
-              <h3>人気の検索ワード</h3>
-              <div class="search-tags">
-                <span class="search-tag">仙台牛タン</span>
-                <span class="search-tag">松島</span>
-                <span class="search-tag">銀山温泉</span>
-                <span class="search-tag">八幡平</span>
-                <span class="search-tag">十和田湖</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- 固定下部ナビゲーション -->
-    <nav class="bottom-nav">
-      <button class="nav-tab active" data-section="227">
-        <span class="nav-icon">🏔️</span>
-        <span class="nav-label">227</span>
-      </button>
-      <button class="nav-tab" data-section="foodtruck">
-        <span class="nav-icon">🚚</span>
-        <span class="nav-label">FoodTruck</span>
-      </button>
-      <button class="nav-tab" data-section="aisearch">
-        <span class="nav-icon">🤖</span>
-        <span class="nav-label">AI検索</span>
-      </button>
-    </nav>
-  </div>
-
-  <!-- QRコードスキャンモーダル -->
-  <div class="qr-modal" id="qr-modal">
-    <div class="qr-modal-content">
-      <div class="qr-modal-header">
-        <h2>QRコードをスキャン</h2>
-        <button class="qr-close-btn" id="qr-close-btn">×</button>
-      </div>
-      <div class="qr-scanner">
-        <video id="qr-video" autoplay playsinline></video>
-        <div class="scan-overlay">
-          <div class="scan-frame"></div>
-        </div>
-      </div>
-      <div class="qr-instructions">Route227のQRコードをカメラに向けてください</div>
-      <div class="qr-error" id="qr-error"></div>
+    <div class="search-interface">
+      <input type="text" id="search-input" placeholder="キーワード検索...">
+      <button id="search-btn">検索</button>
+    </div>
+    <div id="article-tabs">
+      <button class="category-tab active" data-category="all">ALL</button>
+      <button class="category-tab" data-category="event">イベント</button>
+      <button class="category-tab" data-category="news">ニュース</button>
+      <button class="category-tab" data-category="shop">お店</button>
+    </div>
+    <div class="articles-container">
+      <div class="article-card" data-category="event" data-url="https://example.com/event1">イベント1</div>
+      <div class="article-card" data-category="news" data-url="https://example.com/news1">ニュース1</div>
+      <div class="article-card" data-category="shop" data-url="https://example.com/shop1">お店1</div>
     </div>
   </div>
 
-  <!-- 最後に app.js を読み込む -->
-  <script src="app.js"></script>
+  <!-- フードトラック画面（仮） -->
+  <div id="section-FoodTruck" class="content-section">
+    <h1>Food Truck 情報</h1>
+    <p>近日公開予定！</p>
+  </div>
+
+  <!-- QRモーダル -->
+  <div id="qr-modal" class="modal">
+    <video id="qr-video" autoplay></video>
+    <div id="qr-error"></div>
+    <button id="qr-close-btn">閉じる</button>
+  </div>
+
+  <!-- ナビゲーション -->
+  <nav>
+    <button class="nav-tab active" data-section="227">227</button>
+    <button class="nav-tab" data-section="FoodTruck">FoodTruck</button>
+  </nav>
 </body>
 </html>
