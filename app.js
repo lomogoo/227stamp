@@ -1,146 +1,133 @@
 // app.js
 
-const DEVICE_ID = getOrCreateDeviceId();
-let currentTab = "all";
-let currentSection = "227";
+document.addEventListener(‘DOMContentLoaded’, () => {
+let touchStartX = 0;
+let touchEndX = 0;
+const categories = [‘ALL’, ‘イベント’, ‘お店’, ‘ニュース’];
+let currentCategoryIndex = 0;
 
-function getOrCreateDeviceId() {
-  const KEY = "deviceId";
-  let deviceId = localStorage.getItem(KEY);
-  if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    localStorage.setItem(KEY, deviceId);
-  }
-  return deviceId;
+// ローカルストレージ初期化
+if (localStorage.getItem(‘totalStamps’) === null) {
+localStorage.setItem(‘totalStamps’, ‘0’);
+localStorage.setItem(‘currentStamps’, ‘0’);
+localStorage.setItem(‘usedCount’, ‘0’);
+}
+let totalStamps = parseInt(localStorage.getItem(‘totalStamps’), 10);
+let currentStamps = parseInt(localStorage.getItem(‘currentStamps’), 10);
+
+const categoryTabs = document.getElementById(‘categoryTabs’);
+const articlesContainer = document.getElementById(‘articles’);
+const currentStampsEl = document.getElementById(‘currentStamps’);
+const totalStampsEl = document.getElementById(‘totalStamps’);
+
+const menu227 = document.getElementById(‘menu-227’);
+const menuFoodtruck = document.getElementById(‘menu-foodtruck’);
+
+const qrScanner = document.getElementById(‘qrScanner’);
+const scannerPreview = document.getElementById(‘scannerPreview’);
+
+// サンプル記事データ
+const articles = [
+{ id: 1, title: ‘記事1’, category: ‘ALL’ },
+{ id: 2, title: ‘記事2’, category: ‘イベント’ },
+{ id: 3, title: ‘記事3’, category: ‘お店’ },
+{ id: 4, title: ‘記事4’, category: ‘ニュース’ }
+];
+
+// 記事描画
+function renderArticles() {
+articlesContainer.innerHTML = ‘’;
+const selectedCategory = categories[currentCategoryIndex];
+const filtered = articles.filter(
+a => selectedCategory === ‘ALL’ || a.category === selectedCategory
+);
+filtered.forEach(a => {
+const div = document.createElement(‘div’);
+div.className = ‘article’;
+div.innerHTML = <div class="article-title">${a.title}</div> <div class="article-image">📄</div>;
+articlesContainer.appendChild(div);
+});
 }
 
-// カテゴリ切替
-function setupCategoryTabs() {
-  const tabs = document.querySelectorAll(".category-tab");
-  const cards = document.querySelectorAll(".article-card");
-
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      tabs.forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      const category = tab.dataset.category;
-      currentTab = category;
-      cards.forEach(card => {
-        if (category === "all" || card.dataset.category === category) {
-          card.classList.remove("hidden");
-        } else {
-          card.classList.add("hidden");
-        }
-      });
-    });
-  });
-}
-
-// セクション切替（下部メニュー）
-function setupNavMenu() {
-  const navTabs = document.querySelectorAll(".nav-tab");
-  navTabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.section;
-      document.querySelectorAll(".content-section").forEach(s => s.classList.remove("active"));
-      document.getElementById(`section-${target}`).classList.add("active");
-      currentSection = target;
-    });
-  });
-}
-
-// QRコード読み取り
-let isScanning = false;
-let videoStream = null;
-let scanCanvas = null;
-let scanCanvasCtx = null;
-const QR_CODE = "ROUTE227_STAMP_2025";
-
-function setupQRScanner() {
-  const scanBtn = document.getElementById("scan-qr-btn");
-  const closeBtn = document.getElementById("qr-close-btn");
-  const modal = document.getElementById("qr-modal");
-
-  scanBtn.addEventListener("click", () => openQRScanner());
-  closeBtn.addEventListener("click", () => closeQRScanner());
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeQRScanner();
-  });
-
-  scanCanvas = document.createElement("canvas");
-  scanCanvasCtx = scanCanvas.getContext("2d");
-}
-
-function openQRScanner() {
-  const modal = document.getElementById("qr-modal");
-  const video = document.getElementById("qr-video");
-  const errorDiv = document.getElementById("qr-error");
-  modal.classList.add("active");
-  errorDiv.textContent = "";
-
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(stream => {
-      videoStream = stream;
-      video.srcObject = stream;
-      isScanning = true;
-      requestAnimationFrame(tickQRCode);
-    })
-    .catch(err => {
-      console.error("カメラアクセスエラー:", err);
-      errorDiv.textContent = "カメラにアクセスできません。";
-    });
-}
-
-function closeQRScanner() {
-  const modal = document.getElementById("qr-modal");
-  const video = document.getElementById("qr-video");
-  modal.classList.remove("active");
-  isScanning = false;
-  if (videoStream) {
-    videoStream.getTracks().forEach(t => t.stop());
-    video.srcObject = null;
-  }
-}
-
-function tickQRCode() {
-  if (!isScanning) return;
-  const video = document.getElementById("qr-video");
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    scanCanvas.width = video.videoWidth;
-    scanCanvas.height = video.videoHeight;
-    scanCanvasCtx.drawImage(video, 0, 0);
-    const imageData = scanCanvasCtx.getImageData(0, 0, video.videoWidth, video.videoHeight);
-    const code = jsQR(imageData.data, imageData.width, imageData.height);
-    if (code && code.data === QR_CODE) {
-      addStamp();
-      closeQRScanner();
-      return;
-    }
-  }
-  requestAnimationFrame(tickQRCode);
-}
-
-// スタンプの管理
-function addStamp() {
-  let current = parseInt(localStorage.getItem("currentStamps") || "0", 10);
-  current = (current + 1) % 6;
-  localStorage.setItem("currentStamps", current);
-  updateStampDisplay();
-}
-
+// スタンプ表示更新
 function updateStampDisplay() {
-  const count = parseInt(localStorage.getItem("currentStamps") || "0", 10);
-  document.getElementById("stamp-count").textContent = count;
-  document.querySelectorAll(".stamp-hole").forEach((el, i) => {
-    el.classList.toggle("filled", i < count);
-  });
+currentStampsEl.textContent = currentStamps;
+totalStampsEl.textContent = totalStamps;
 }
 
-// 起動処理
-window.addEventListener("DOMContentLoaded", () => {
-  setupCategoryTabs();
-  setupNavMenu();
-  setupQRScanner();
-  updateStampDisplay();
+// QRスキャン開始
+function startScanner() {
+qrScanner.style.display = ‘flex’;
+const codeReader = new ZXing.BrowserQRCodeReader();
+codeReader.decodeFromVideoDevice(null, scannerPreview, (result, err) => {
+if (result) {
+if (result.text === ‘ROUTE227_STAMP_2025’) {
+totalStamps++;
+currentStamps++;
+localStorage.setItem(‘totalStamps’, totalStamps);
+localStorage.setItem(‘currentStamps’, currentStamps);
+updateStampDisplay();
+}
+codeReader.reset();
+qrScanner.style.display = ‘none’;
+}
+});
+}
+
+// セクション切り替え
+function switchSection(section) {
+if (section === ‘227’) {
+categoryTabs.style.display = ‘flex’;
+menu227.classList.add(‘active’);
+menuFoodtruck.classList.remove(‘active’);
+renderArticles();
+} else {
+categoryTabs.style.display = ‘none’;
+menuFoodtruck.classList.add(‘active’);
+menu227.classList.remove(‘active’);
+articlesContainer.innerHTML = ‘FoodTruck情報はこちら’;
+}
+}
+
+// カテゴリタブクリック
+categoryTabs.addEventListener(‘click’, e => {
+if (e.target.classList.contains(‘tab’)) {
+[…categoryTabs.children].forEach(t => t.classList.remove(‘active’));
+e.target.classList.add(‘active’);
+currentCategoryIndex = categories.indexOf(e.target.dataset.category);
+renderArticles();
+}
+});
+
+// スワイプ切り替え
+categoryTabs.addEventListener(‘touchstart’, e => {
+touchStartX = e.changedTouches[0].clientX;
+});
+categoryTabs.addEventListener(‘touchend’, e => {
+touchEndX = e.changedTouches[0].clientX;
+const diff = touchEndX - touchStartX;
+if (Math.abs(diff) > 30) {
+if (diff < 0) {
+currentCategoryIndex = (currentCategoryIndex + 1) % categories.length;
+} else {
+currentCategoryIndex =
+(currentCategoryIndex - 1 + categories.length) % categories.length;
+}
+const newTab = categoryTabs.querySelector(
+[data-category="${categories[currentCategoryIndex]}"]
+);
+newTab.click();
+}
+});
+
+// メニュークリック
+menu227.addEventListener(‘click’, () => switchSection(‘227’));
+menuFoodtruck.addEventListener(‘click’, () => switchSection(‘FoodTruck’));
+
+// 初期表示
+updateStampDisplay();
+switchSection(‘227’);
+
+// スタンプカード部分クリックでQRスキャナー起動
+document.getElementById(‘stampCard’).addEventListener(‘click’, startScanner);
 });
