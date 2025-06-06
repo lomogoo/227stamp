@@ -1,187 +1,108 @@
 /* style.css */
 
-/* リセットと共通スタイル */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Helvetica Neue', sans-serif;
-}
-
 body {
-  background-color: #fff;
-  color: #111;
-  font-size: 16px;
-  line-height: 1.5;
-  height: 100vh;
-  overflow: hidden;
+  margin: 0;
+  font-family: sans-serif;
+  background: #F5A623;
+  color: #333;
 }
 
-header {
-  padding: 16px;
-  font-size: 1.4rem;
-  font-weight: bold;
+#app {
+  max-width: 600px;
+  margin: 0 auto;
   background: #fff;
-  border-bottom: 1px solid #ccc;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  min-height: 100vh;
+  position: relative;
 }
 
 /* カテゴリタブ */
 .category-tabs {
   display: flex;
-  justify-content: space-around;
-  background: #f9f9f9;
-  border-bottom: 1px solid #eee;
-  position: sticky;
-  top: 60px;
-  z-index: 9;
+  justify-content: space-between;
+  background: #fff5e6;
+  padding: 10px 20px;
+  border-bottom: 1px solid #ddd;
+  user-select: none;
 }
 
-.category-tab {
+.category-tabs .tab {
   flex: 1;
   text-align: center;
-  padding: 12px 0;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  font-weight: 500;
-}
-
-.category-tab.active {
-  border-bottom: 2px solid #111;
-  color: #111;
-}
-
-/* 投稿カード風 */
-.articles {
-  overflow-y: scroll;
-  height: calc(100vh - 120px);
   padding: 8px 0;
-}
-
-.article-card {
-  padding: 16px;
-  border-bottom: 1px solid #eee;
-  background: #fff;
   cursor: pointer;
-  transition: background 0.3s;
 }
 
-.article-card:hover {
-  background: #f0f0f0;
+.category-tabs .tab.active {
+  font-weight: bold;
+  border-bottom: 2px solid #333;
+}
+
+/* 記事 */
+#articles {
+  padding: 20px;
+}
+
+.article {
+  margin-bottom: 20px;
+}
+
+.article-title {
+  font-size: 1.2em;
+  margin-bottom: 5px;
+}
+
+.article-image {
+  font-size: 2em;
 }
 
 /* スタンプカード */
-.stamp-area {
-  padding: 16px;
+.stamp-card {
+  position: fixed;
+  bottom: 60px;
+  left: 0;
+  right: 0;
   background: #fff;
+  padding: 10px;
+  text-align: center;
   border-top: 1px solid #ddd;
 }
 
-.stamp-holes {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.stamp-hole {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid #aaa;
-  background: #fff;
-}
-
-.stamp-hole.filled {
-  background: #fbbf24;
-  border-color: #f59e0b;
-}
-
-/* QRボタン */
-#scan-qr-btn {
-  background: #111;
-  color: #fff;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  display: block;
-  margin: 0 auto;
-}
-
-/* QRモーダル */
-#qr-modal {
+/* QRスキャナー */
+.qr-scanner {
   display: none;
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  justify-content: center;
+  background: rgba(0,0,0,0.5);
   align-items: center;
-  z-index: 1000;
-  flex-direction: column;
+  justify-content: center;
 }
 
-#qr-modal.active {
-  display: flex;
-}
-
-#qr-video {
+.qr-scanner video {
   width: 80%;
   max-width: 400px;
-  border-radius: 8px;
 }
 
-#qr-close-btn {
-  margin-top: 16px;
-  background: #fff;
-  color: #111;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-#qr-error {
-  color: #f87171;
-  font-size: 14px;
-  margin-top: 12px;
-}
-
-/* ナビゲーション */
-nav {
+/* 下部メニュー */
+.bottom-menu {
   position: fixed;
   bottom: 0;
-  width: 100%;
-  background: #fff;
+  left: 0;
+  right: 0;
   display: flex;
-  border-top: 1px solid #ccc;
+  background: #fff;
+  border-top: 1px solid #ddd;
 }
 
-.nav-tab {
+.menu-item {
   flex: 1;
-  padding: 12px;
   text-align: center;
-  font-weight: 500;
+  padding: 15px 0;
   cursor: pointer;
-  border-top: 2px solid transparent;
 }
 
-.nav-tab.active {
-  border-top: 2px solid #111;
-  color: #111;
-}
-
-/* セクション表示制御 */
-.content-section {
-  display: none;
-}
-
-.content-section.active {
-  display: block;
+.menu-item.active {
+  background: #ffe5b4;
 }
