@@ -1,76 +1,78 @@
-<!-- ✅ index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Route227 スタンプカード</title>
-  <link rel="stylesheet" href="style.css" />
-  <script defer type="module" src="app.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>227スタンプカード</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- 属性入力モーダル -->
-  <div id="profile-modal" class="modal">
-    <form id="profile-form">
-      <h2>あなたについて教えてください</h2>
-      <label>性別：<select id="gender-select"><option value="">選択</option><option value="男性">男性</option><option value="女性">女性</option></select></label>
-      <label>年齢：<select id="age-select"><option value="">選択</option><option value="10代">10代</option><option value="20代">20代</option><option value="30代">30代</option><option value="40代以上">40代以上</option></select></label>
-      <label>職業：<select id="job-select"><option value="">選択</option><option value="学生">学生</option><option value="会社員">会社員</option><option value="その他">その他</option></select></label>
-      <label>居住地：<input type="text" id="region-select" placeholder="例：仙台市太白区" /></label>
-      <button type="submit">登録</button>
-    </form>
-  </div>
+  <div id="app">
+    <!-- ヘッダー -->
+    <header>
+      <h1>227スタンプカード</h1>
+    </header>
 
-  <!-- スタンプカード画面 -->
-  <div id="section-227" class="content-section active">
-    <h1>Route227 スタンプカード</h1>
-    <div id="stamp-card">
-      <div id="stamp-count">0</div>
-      <div class="stamp-holes">
-        <div class="stamp-hole" data-index="0"></div>
-        <div class="stamp-hole" data-index="1"></div>
-        <div class="stamp-hole" data-index="2"></div>
-        <div class="stamp-hole" data-index="3"></div>
-        <div class="stamp-hole" data-index="4"></div>
-        <div class="stamp-hole" data-index="5"></div>
+    <!-- ナビゲーション -->
+    <nav>
+      <button class="nav-tab active" data-section="227">227</button>
+      <button class="nav-tab" data-section="foodtruck">FoodTruck</button>
+    </nav>
+
+    <!-- 各セクション -->
+    <section id="section-227" class="content-section active">
+      <div class="stamp-area">
+        <div class="stamp-holes">
+          <div class="stamp-hole" data-index="0"></div>
+          <div class="stamp-hole" data-index="1"></div>
+          <div class="stamp-hole" data-index="2"></div>
+          <div class="stamp-hole" data-index="3"></div>
+          <div class="stamp-hole" data-index="4"></div>
+          <div class="stamp-hole" data-index="5"></div>
+        </div>
+        <p>現在のスタンプ数：<span id="stamp-count">0</span>/6</p>
+        <button id="scan-qr-btn">QRコードを読み取る</button>
       </div>
-      <button id="scan-qr-btn">QRでスタンプを貯める</button>
-    </div>
 
-    <div class="search-interface">
-      <input type="text" id="search-input" placeholder="キーワード検索...">
-      <button id="search-btn">検索</button>
-    </div>
-    <div id="article-tabs">
-      <button class="category-tab active" data-category="all">ALL</button>
-      <button class="category-tab" data-category="event">イベント</button>
-      <button class="category-tab" data-category="news">ニュース</button>
-      <button class="category-tab" data-category="shop">お店</button>
-    </div>
-    <div class="articles-container">
-      <div class="article-card" data-category="event" data-url="https://example.com/event1">イベント1</div>
-      <div class="article-card" data-category="news" data-url="https://example.com/news1">ニュース1</div>
-      <div class="article-card" data-category="shop" data-url="https://example.com/shop1">お店1</div>
+      <div class="category-tabs">
+        <button class="category-tab active" data-category="all">ALL</button>
+        <button class="category-tab" data-category="event">イベント</button>
+        <button class="category-tab" data-category="shop">お店</button>
+        <button class="category-tab" data-category="news">ニュース</button>
+      </div>
+      <div class="articles">
+        <div class="article-card" data-category="event" data-url="https://example.com">イベント記事</div>
+        <div class="article-card" data-category="shop" data-url="https://example.com">お店情報</div>
+        <div class="article-card" data-category="news" data-url="https://example.com">ニュース記事</div>
+      </div>
+    </section>
+
+    <section id="section-foodtruck" class="content-section">
+      <div class="stamp-area">
+        <div class="stamp-holes">
+          <div class="stamp-hole" data-index="0"></div>
+          <div class="stamp-hole" data-index="1"></div>
+          <div class="stamp-hole" data-index="2"></div>
+          <div class="stamp-hole" data-index="3"></div>
+          <div class="stamp-hole" data-index="4"></div>
+          <div class="stamp-hole" data-index="5"></div>
+        </div>
+        <p>現在のスタンプ数：<span id="stamp-count">0</span>/6</p>
+        <button id="scan-qr-btn">QRコードを読み取る</button>
+      </div>
+    </section>
+
+    <!-- QRコード読み取りモーダル -->
+    <div id="qr-modal">
+      <video id="qr-video" autoplay></video>
+      <div id="qr-error"></div>
+      <button id="qr-close-btn">閉じる</button>
     </div>
   </div>
 
-  <!-- フードトラック画面（仮） -->
-  <div id="section-FoodTruck" class="content-section">
-    <h1>Food Truck 情報</h1>
-    <p>近日公開予定！</p>
-  </div>
-
-  <!-- QRモーダル -->
-  <div id="qr-modal" class="modal">
-    <video id="qr-video" autoplay></video>
-    <div id="qr-error"></div>
-    <button id="qr-close-btn">閉じる</button>
-  </div>
-
-  <!-- ナビゲーション -->
-  <nav>
-    <button class="nav-tab active" data-section="227">227</button>
-    <button class="nav-tab" data-section="FoodTruck">FoodTruck</button>
-  </nav>
+  <!-- jsQR CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <!-- アプリ本体 -->
+  <script src="app.js"></script>
 </body>
 </html>
