@@ -1,12 +1,10 @@
 // app.js
 
 document.addEventListener(‘DOMContentLoaded’, () => {
-let touchStartX = 0;
-let touchEndX = 0;
 const categories = [‘ALL’, ‘イベント’, ‘お店’, ‘ニュース’];
 let currentCategoryIndex = 0;
 
-// ローカルストレージ初期化
+// スタンプデータ初期化
 if (localStorage.getItem(‘totalStamps’) === null) {
 localStorage.setItem(‘totalStamps’, ‘0’);
 localStorage.setItem(‘currentStamps’, ‘0’);
@@ -19,41 +17,81 @@ const categoryTabs = document.getElementById(‘categoryTabs’);
 const articlesContainer = document.getElementById(‘articles’);
 const currentStampsEl = document.getElementById(‘currentStamps’);
 const totalStampsEl = document.getElementById(‘totalStamps’);
-
+const stampCard = document.getElementById(‘stampCard’);
 const menu227 = document.getElementById(‘menu-227’);
 const menuFoodtruck = document.getElementById(‘menu-foodtruck’);
-
 const qrScanner = document.getElementById(‘qrScanner’);
 const scannerPreview = document.getElementById(‘scannerPreview’);
 
-// サンプル記事データ
+// 交換ボタン生成
+const coffeeBtn = document.createElement(‘button’);
+coffeeBtn.id = ‘coffeeExchange’;
+coffeeBtn.textContent = ‘コーヒーと交換’;
+coffeeBtn.disabled = true;
+const curryBtn = document.createElement(‘button’);
+curryBtn.id = ‘curryExchange’;
+curryBtn.textContent = ‘カレーと交換’;
+curryBtn.disabled = true;
+stampCard.appendChild(coffeeBtn);
+stampCard.appendChild(curryBtn);
+
+// 記事データ一覧
 const articles = [
-{ id: 1, title: ‘記事1’, category: ‘ALL’ },
-{ id: 2, title: ‘記事2’, category: ‘イベント’ },
-{ id: 3, title: ‘記事3’, category: ‘お店’ },
-{ id: 4, title: ‘記事4’, category: ‘ニュース’ }
+{ title: ‘Bang BAR SENDAI 第3弾開催’, category: ‘イベント’, image: ‘🎉’, url: ‘https://machico.mu/special/detail/2727’ },
+{ title: ‘仙臺横丁フェス’,           category: ‘イベント’, image: ‘🍻’, url: ‘https://machico.mu/special/detail/2691’ },
+{ title: ‘バル仙台2025’,           category: ‘イベント’, image: ‘🍷’, url: ‘https://machico.mu/special/detail/2704’ },
+{ title: ‘TOHOKU DE＆I FORUM 2025’, category: ‘イベント’, image: ‘🎤’, url: ‘https://machico.mu/special/detail/2924’ },
+{ title: ‘PIZZA＆WINE ESOLA’,      category: ‘お店’,    image: ‘🍕’, url: ‘https://machico.mu/gourmet/detail/2003831’ }
 ];
 
 // 記事描画
 function renderArticles() {
 articlesContainer.innerHTML = ‘’;
-const selectedCategory = categories[currentCategoryIndex];
-const filtered = articles.filter(
-a => selectedCategory === ‘ALL’ || a.category === selectedCategory
-);
-filtered.forEach(a => {
+const selected = categories[currentCategoryIndex];
+articles
+.filter(a => selected === ‘ALL’ || a.category === selected)
+.forEach(a => {
 const div = document.createElement(‘div’);
 div.className = ‘article’;
-div.innerHTML = <div class="article-title">${a.title}</div> <div class="article-image">📄</div>;
+div.innerHTML = <div class="article-title"><a href="${a.url}" target="_blank">${a.title}</a></div> <div class="article-image">${a.image}</div>;
 articlesContainer.appendChild(div);
 });
+}
+
+// 交換ボタン活性制御
+function updateExchangeButtons() {
+coffeeBtn.disabled = currentStamps < 3;
+curryBtn.disabled = currentStamps < 6;
 }
 
 // スタンプ表示更新
 function updateStampDisplay() {
 currentStampsEl.textContent = currentStamps;
 totalStampsEl.textContent = totalStamps;
+updateExchangeButtons();
 }
+
+// 交換ボタン処理
+coffeeBtn.addEventListener(‘click’, () => {
+if (currentStamps >= 3) {
+currentStamps -= 3;
+totalStamps -= 3;
+localStorage.setItem(‘currentStamps’, currentStamps);
+localStorage.setItem(‘totalStamps’, totalStamps);
+alert(‘コーヒー1杯と交換しました！’);
+updateStampDisplay();
+}
+});
+curryBtn.addEventListener(‘click’, () => {
+if (currentStamps >= 6) {
+currentStamps -= 6;
+totalStamps -= 6;
+localStorage.setItem(‘currentStamps’, currentStamps);
+localStorage.setItem(‘totalStamps’, totalStamps);
+alert(‘カレー1杯と交換しました！’);
+updateStampDisplay();
+}
+});
 
 // QRスキャン開始
 function startScanner() {
@@ -61,7 +99,7 @@ qrScanner.style.display = ‘flex’;
 const codeReader = new ZXing.BrowserQRCodeReader();
 codeReader.decodeFromVideoDevice(null, scannerPreview, (result, err) => {
 if (result) {
-if (result.text === ‘ROUTE227_STAMP_2025’) {
+if (result.text === ‘ROUTE227_STAMP_2025’ && currentStamps < 6) {
 totalStamps++;
 currentStamps++;
 localStorage.setItem(‘totalStamps’, totalStamps);
@@ -89,34 +127,13 @@ articlesContainer.innerHTML = ‘FoodTruck情報はこちら’;
 }
 }
 
-// カテゴリタブクリック
+// タブクリック
 categoryTabs.addEventListener(‘click’, e => {
 if (e.target.classList.contains(‘tab’)) {
-[…categoryTabs.children].forEach(t => t.classList.remove(‘active’));
+Array.from(categoryTabs.children).forEach(t => t.classList.remove(‘active’));
 e.target.classList.add(‘active’);
 currentCategoryIndex = categories.indexOf(e.target.dataset.category);
 renderArticles();
-}
-});
-
-// スワイプ切り替え
-categoryTabs.addEventListener(‘touchstart’, e => {
-touchStartX = e.changedTouches[0].clientX;
-});
-categoryTabs.addEventListener(‘touchend’, e => {
-touchEndX = e.changedTouches[0].clientX;
-const diff = touchEndX - touchStartX;
-if (Math.abs(diff) > 30) {
-if (diff < 0) {
-currentCategoryIndex = (currentCategoryIndex + 1) % categories.length;
-} else {
-currentCategoryIndex =
-(currentCategoryIndex - 1 + categories.length) % categories.length;
-}
-const newTab = categoryTabs.querySelector(
-[data-category="${categories[currentCategoryIndex]}"]
-);
-newTab.click();
 }
 });
 
@@ -128,6 +145,6 @@ menuFoodtruck.addEventListener(‘click’, () => switchSection(‘FoodTruck’)
 updateStampDisplay();
 switchSection(‘227’);
 
-// スタンプカード部分クリックでQRスキャナー起動
-document.getElementById(‘stampCard’).addEventListener(‘click’, startScanner);
+// スタンプカードクリックでQR
+stampCard.addEventListener(‘click’, startScanner);
 });
