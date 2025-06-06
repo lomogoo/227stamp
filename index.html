@@ -3,43 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>227スタンプカード</title>
+  <title>227スタンプアプリ</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
-    <!-- ヘッダー -->
-    <header>
-      <h1>227スタンプカード</h1>
-    </header>
 
-    <!-- ナビゲーション -->
-    <nav>
-      <button class="nav-tab active" data-section="227">227</button>
-      <button class="nav-tab" data-section="foodtruck">FoodTruck</button>
-    </nav>
+    <!-- 上部カテゴリタブ -->
+    <div class="category-tabs">
+      <button class="category-tab active" data-category="all">ALL</button>
+      <button class="category-tab" data-category="event">イベント</button>
+      <button class="category-tab" data-category="shop">お店</button>
+      <button class="category-tab" data-category="news">ニュース</button>
+    </div>
 
-    <!-- 各セクション -->
+    <!-- 227フィード（記事一覧） -->
     <section id="section-227" class="content-section active">
-      <div class="stamp-area">
-        <div class="stamp-holes">
-          <div class="stamp-hole" data-index="0"></div>
-          <div class="stamp-hole" data-index="1"></div>
-          <div class="stamp-hole" data-index="2"></div>
-          <div class="stamp-hole" data-index="3"></div>
-          <div class="stamp-hole" data-index="4"></div>
-          <div class="stamp-hole" data-index="5"></div>
-        </div>
-        <p>現在のスタンプ数：<span id="stamp-count">0</span>/6</p>
-        <button id="scan-qr-btn">QRコードを読み取る</button>
-      </div>
-
-      <div class="category-tabs">
-        <button class="category-tab active" data-category="all">ALL</button>
-        <button class="category-tab" data-category="event">イベント</button>
-        <button class="category-tab" data-category="shop">お店</button>
-        <button class="category-tab" data-category="news">ニュース</button>
-      </div>
       <div class="articles">
         <div class="article-card" data-category="event" data-url="https://example.com">イベント記事</div>
         <div class="article-card" data-category="shop" data-url="https://example.com">お店情報</div>
@@ -47,8 +26,10 @@
       </div>
     </section>
 
+    <!-- FoodTruck（スタンプカード） -->
     <section id="section-foodtruck" class="content-section">
       <div class="stamp-area">
+        <h2>スタンプカード</h2>
         <div class="stamp-holes">
           <div class="stamp-hole" data-index="0"></div>
           <div class="stamp-hole" data-index="1"></div>
@@ -62,12 +43,18 @@
       </div>
     </section>
 
-    <!-- QRコード読み取りモーダル -->
+    <!-- QR読み取り用モーダル -->
     <div id="qr-modal">
       <video id="qr-video" autoplay></video>
       <div id="qr-error"></div>
       <button id="qr-close-btn">閉じる</button>
     </div>
+
+    <!-- 下部固定ナビゲーション -->
+    <nav class="bottom-nav">
+      <button class="nav-tab active" data-section="227">227</button>
+      <button class="nav-tab" data-section="foodtruck">FoodTruck</button>
+    </nav>
   </div>
 
   <!-- jsQR CDN -->
