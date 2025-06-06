@@ -3,42 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Route227 Stamp Card</title>
+  <title>Route227Cafe</title>
   <link rel="stylesheet" href="style.css">
-  <!-- ZXing QRライブラリ -->
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <div id="app">
-    <!-- 上部カテゴリタブ（227セクションのみ表示） -->
-    <div id="categoryTabs" class="category-tabs">
-      <div data-category="ALL" class="tab active">ALL</div>
-      <div data-category="イベント" class="tab">イベント</div>
-      <div data-category="お店" class="tab">お店</div>
-      <div data-category="ニュース" class="tab">ニュース</div>
+  <header class="app-header">
+    <div class="container">
+      <h1 class="app-title">Route227Cafe</h1>
     </div>
+  </header>
 
-    <!-- 記事リスト -->
-    <div id="articles"></div>
-
-    <!-- スタンプカード表示 -->
-    <div id="stampCard" class="stamp-card">
-      <p>スタンプ: <span id="currentStamps">0</span>/5</p>
-      <p>合計スタンプ: <span id="totalStamps">0</span></p>
+  <nav class="main-nav">
+    <div class="container">
+      <ul class="nav-tabs">
+        <li class="nav-item">
+          <button class="nav-link active" data-section="feed-section">227</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-section="foodtruck-section">FoodTruck</button>
+        </li>
+      </ul>
     </div>
+  </nav>
 
-    <!-- QRスキャナー -->
-    <div id="qrScanner" class="qr-scanner">
-      <video id="scannerPreview" playsinline></video>
-    </div>
+  <main class="app-content">
+    <!-- Feed Section -->
+    <section id="feed-section" class="section active">
+      <div class="container">
+        <div class="category-tabs">
+          <button class="category-tab active" data-category="all">ALL</button>
+          <button class="category-tab" data-category="イベント">イベント</button>
+          <button class="category-tab" data-category="お店">お店</button>
+          <button class="category-tab" data-category="ニュース">ニュース</button>
+        </div>
+        <div class="articles-container" id="articles-container">
+          <!-- Articles will be dynamically inserted here -->
+        </div>
+      </div>
+    </section>
 
-    <!-- 下部メニュー -->
-    <div class="bottom-menu">
-      <div id="menu-227" class="menu-item active">227</div>
-      <div id="menu-foodtruck" class="menu-item">FoodTruck</div>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
+    <!-- FoodTruck Section -->
+    <section id="foodtruck-section" class="section">
+      <div class="container">
+        <div class="card stamp-card">
+          <div class="card__header">
+            <h2>Route227 スタンプカード</h2>
+          </div>
+          <div class="card__body">
+            <div class="stamp-container">
+              <div class="stamp-grid">
+                <!-- Stamps will be dynamically inserted here -->
+                <div class="stamp" data-stamp-id="1"></div>
+                <div class="stamp" data-stamp-
