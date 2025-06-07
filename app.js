@@ -14,6 +14,19 @@ db.auth.onAuthStateChange((_event, _session) => {
     sessionStorage.setItem('reloadedOnce', '1');   // ← 1回きり
     location.replace('https://lomogoo.github.io/227stamp/');
  }
+  // ---- 追加ここから ----
+  if (event === 'SIGNED_IN') {
+    globalUID = session?.user?.id || null;
+    // モーダルを閉じ、カードを同期
+    document.getElementById('login-modal').classList.remove('active');
+    (async () => {
+      await syncStampFromDB(globalUID);
+      updateStampDisplay();
+      updateRewardButtons();
+    })();
+  }
+  // ---- 追加ここまで ----
+  
 });
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
