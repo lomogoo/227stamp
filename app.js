@@ -21,7 +21,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
                                                    emailRedirectTo: 'https://lomogoo.github.io/227stamp/'
   }});
   
-  const msg = document.getElementById('login-message');
+  const msg = ('login-message');
   if (error) {
     msg.textContent = '❌ メール送信に失敗しました';
     console.error(error);
@@ -304,7 +304,7 @@ async function initApp() {
 
   /* 🆕 UI 切替（ログインフォームを非表示に）*/
   if (globalUID) {
-    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('login-form').remove();
   }
 }
 
