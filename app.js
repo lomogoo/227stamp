@@ -2,6 +2,14 @@
 
 // Data
 const appData = {
+  articles: [
+    { id: 1, title: "仙台の新しいカフェ文化", category: "お店", date: "2025-06-05", excerpt: "仙台市内で注目を集める新しいカフェスタイルについて紹介します。", content: "仙台の街角に新しいカフェ文化が根付いています..." },
+    { id: 2, title: "Route227キッチンカー始動", category: "ニュース", date: "2025-06-04", excerpt: "Route227がキッチンカーでの営業を開始しました。", content: "東北227市町村の魅力を乗せたキッチンカーが..." },
+    { id: 3, title: "夏のカレーフェスティバル", category: "イベント", date: "2025-06-03", excerpt: "7月に開催予定の夏のカレーフェスティバルの詳細が決定しました。", content: "今年の夏も盛大にカレーフェスティバルを開催..." },
+    { id: 4, title: "東北食材の魅力", category: "お店", date: "2025-06-02", excerpt: "Route227で使用している東北各地の食材について。", content: "東北6県の豊かな食材を使用したメニュー..." },
+    { id: 5, title: "地域コミュニティとの連携", category: "ニュース", date: "2025-06-01", excerpt: "地域コミュニティとの新しい取り組みを発表。", content: "地域の皆様との連携を深めるプロジェクト..." },
+    { id: 6, title: "ワークショップ開催のお知らせ", category: "イベント", date: "2025-05-30", excerpt: "6月に開催されるワークショップの参加者を募集中です。", content: "東北の文化を体験できるワークショップ..." }
+  ],
   rewards: [
     { type: "coffee", stampsRequired: 3, name: "コーヒー1杯無料" },
     { type: "curry", stampsRequired: 6, name: "カレー1杯無料" }
