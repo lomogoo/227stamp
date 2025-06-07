@@ -295,7 +295,7 @@ async function initApp() {
   if (globalUID) {
     await db
       .from('users')
-      .upsert({ supabase_uid: globalUID, device_id: deviceId, stamp_count })
+    .upsert({ supabase_uid: globalUID,device_id: deviceId,stamp_count: stampCount }) 
       .eq('supabase_uid', globalUID)
       .select();
   }
