@@ -62,7 +62,7 @@ function loadStampCount() {
 // Supabase UPDATE
 async function updateStampCount(newCount) {
   const { data: { session } } = await db.auth.getSession();
-  const uid = session?.user?.id || null;
+  const uid = session?.user?.id || null;          // すでに取得済み
 
   const { error } = await db
     .from('users')
@@ -89,7 +89,11 @@ async function syncStampFromDB(uid = null) {
     // ― 新規ユーザー作成 ―
     const { error: insertError } = await db
       .from('users')
-      .insert([{ device_id: deviceId, stamp_count: stampCount }]); // ← ★ここ！
+      .insert([{
+      supabase_uid: uid,         // ← 追加
+      device_id: deviceId,
+      stamp_count: stampCount
+  }]);
 
     if (insertError) {
       console.error('INSERT error', insertError);
@@ -235,7 +239,7 @@ function setupEventListeners() {
       target.classList.add('active');
 
       if (link.dataset.section === 'foodtruck-section') {
-        await syncStampFromDB();
+        await syncStampFromDB(supaUID);
         updateStampDisplay();
         updateRewardButtons();
       }
