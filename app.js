@@ -1,4 +1,4 @@
-/* app.js（2025-06-07-1503） */
+/* app.js（2025-06-07-1620） */
 
 /* 1) Supabase 初期化 */
 const db = window.supabase.createClient(
