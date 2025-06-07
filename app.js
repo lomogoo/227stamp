@@ -8,10 +8,12 @@ const db = window.supabase.createClient(
 
 db.auth.onAuthStateChange((_event, _session) => {
   // マジックリンク直後は URL に access_token または type=magiclink 等が付く
-  if (window.location.hash.includes('access_token')) {
-    // ハッシュを取り除いて一度だけクリーンリロード
+  if (window.location.hash.includes('access_token') &&
+    !sessionStorage.getItem('reloadedOnce')
+     ) {
+    sessionStorage.setItem('reloadedOnce', '1');   // ← 1回きり
     location.replace('https://lomogoo.github.io/227stamp/');
-  }
+ }
 });
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
