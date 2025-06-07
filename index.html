@@ -1,36 +1,32 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Route227</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Route227Cafe</title>
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <!-- Header -->
   <header class="app-header">
     <div class="container">
       <h1 class="app-title">Route227Cafe</h1>
     </div>
   </header>
 
-  <!-- Main Content -->
   <main class="app-content">
 
     <!-- Feed Section -->
     <section id="feed-section" class="section active">
       <div class="container">
-        <!-- Category Tabs -->
         <div class="category-tabs">
           <button class="category-tab active" data-category="all">ALL</button>
           <button class="category-tab" data-category="イベント">イベント</button>
           <button class="category-tab" data-category="お店">お店</button>
           <button class="category-tab" data-category="ニュース">ニュース</button>
         </div>
-        <!-- Articles Container (自社記事 + Machico記事) -->
         <div class="articles-container" id="articles-container">
-          <!-- JS で .article-card を動的追加 -->
+          <!-- JS で記事カードを追加 -->
         </div>
       </div>
     </section>
@@ -43,6 +39,7 @@
             <h2>Route227 スタンプカード</h2>
           </div>
           <div class="card__body">
+            <!-- スタンプグリッド -->
             <div class="stamp-container">
               <div class="stamp-grid">
                 <div class="stamp" data-stamp-id="1"></div>
@@ -54,7 +51,12 @@
               </div>
             </div>
 
+            <!-- ここに QRスキャンボタンを移動 -->
+            <div class="scan-qr-container" style="text-align:center; margin: var(--space-16) 0;">
+              <button class="btn btn--secondary" id="scan-qr">QRコードをスキャン</button>
+            </div>
 
+            <!-- 交換メニュー -->
             <div class="rewards-container">
               <div class="reward-item">
                 <h3>3スタンプ</h3>
@@ -67,10 +69,9 @@
                 <button class="btn btn--primary" id="curry-reward" disabled>交換する</button>
               </div>
             </div>
+
           </div>
-          <div class="card__footer">
-            <button class="btn btn--secondary btn--full-width" id="scan-qr">QRコードをスキャン</button>
-          </div>
+          <!-- card__footer は不要になったので削除 -->
         </div>
 
         <!-- QR Scanner Modal -->
@@ -86,7 +87,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Notification Modal -->
         <div class="modal" id="notification-modal">
           <div class="modal-content">
@@ -103,7 +104,6 @@
 
       </div>
     </section>
-
   </main>
 
   <!-- Footer Navigation -->
