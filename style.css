@@ -951,6 +951,11 @@ body {
   position: absolute;
 }
 
+.stamp.active {
+  background-color: #fde8db; /* 薄いオレンジ背景 */
+  border-color: var(--color-primary); /* 枠も強調する場合 */
+}
+
 .rewards-container {
   display: flex;
   flex-wrap: wrap;
