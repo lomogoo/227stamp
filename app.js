@@ -62,9 +62,9 @@ async function fetchOrCreateUserRow(uid) {
       .from('users')
       .select('stamp_count')
       .eq('supabase_uid', uid)
-      .single();                // ここがポイント
+      .maybeSingle();                // ここがポイント
 
-    if (status === 404) {
+      if (!data) {
       // 2) 行が無ければ 0 で作成
       const { data: inserted, error: iErr } = await db
         .from('users')
