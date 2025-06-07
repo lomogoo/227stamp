@@ -243,7 +243,12 @@ function setupEventListeners() {
     .addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
 
   closeModalButtons.forEach(btn=>btn.addEventListener('click',()=>closeModal(btn.closest('.modal'))));
-  closeNotificationButton.addEventListener('click',()=>closeModal(notificationModal));
+  // app.js の setupEventListeners 関数内
+closeNotificationButton.addEventListener('click', (event) => {
+  event.stopPropagation(); // これを追加！イベントが親要素へ伝わるのを防ぎます
+  closeModal(notificationModal);
+});
+
   coffeeRewardButton.addEventListener('click',()=>redeemReward('coffee'));
   curryRewardButton.addEventListener('click',()=>redeemReward('curry'));
 }
