@@ -11,23 +11,33 @@ const db = window.supabase.createClient(
 
 // ③ Supabase を使ったユーザー取得＆作成
 async function getOrCreateUser(deviceId) {
-  const { data, error, status } = await db
+  const { data, error } = await db
     .from('users')
     .select('*')
     .eq('device_id', deviceId)
     .single();
 
-  if (error && status === 406) {
-    // レコードがないときは作成
+  // 「データが存在しない」＝エラーでかつ status code に関係なく null なら insert
+  if (error && data === null) {
     const { data: newUser, error: insertError } = await db
       .from('users')
       .insert([{ device_id: deviceId, stamp_count: 0 }])
       .select()
       .single();
-    if (insertError) console.error(insertError);
+
+    if (insertError) {
+      console.error('INSERTエラー:', insertError);
+      return null;
+    }
+
     return newUser;
   }
-  if (error) console.error(error);
+
+  if (error) {
+    console.error('SELECTエラー:', error);
+    return null;
+  }
+
   return data;
 }
 
