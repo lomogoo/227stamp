@@ -138,7 +138,7 @@ async function syncStampFromDB(uid) {
     console.error('INSERT error', insertError);
   }
   remote = stampCount;
-  }　else {
+  } else {
     remote = data?.stamp_count ?? 0;
   }
   /* ▲▲ 修正ここまで ▲▲ */
@@ -347,7 +347,9 @@ async function initApp() {
   globalUID = session?.user?.id || null;
 
    // ★ リロード時にモーダルが残っていたら必ず閉じる
-　if (globalUID) document.getElementById('login-modal')?.classList.remove('active');
+　if (globalUID) {
+   document.getElementById('login-modal')?.classList.remove('active');
+ }
   /* ローカルキャッシュ読み込みは UID 決定後 */
   loadStampCount();
 
