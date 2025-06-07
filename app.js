@@ -6,7 +6,7 @@ const db = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k' // ★正しい anon 公開キー
 );
 
-db.auth.onAuthStateChange((_event, _session) => {
+db.auth.onAuthStateChange((_event, session) => {
   // マジックリンク直後は URL に access_token または type=magiclink 等が付く
   if (window.location.hash.includes('access_token') &&
     !sessionStorage.getItem('reloadedOnce')
