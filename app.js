@@ -250,10 +250,18 @@ function setupEventListeners() {
       target.classList.add('active');
 
       if (link.dataset.section === 'foodtruck-section') {
+        if (!globalUID) {
+    // 未ログインならログインモーダルを表示して処理を中断
+          document.getElementById('login-modal').classList.add('active');
+          return;
+        }
+        
+  // ログイン済みなら通常どおりカードを同期
         await syncStampFromDB(globalUID);
         updateStampDisplay();
         updateRewardButtons();
       }
+    
     }, { passive:true });
   });
 
