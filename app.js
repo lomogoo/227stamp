@@ -332,14 +332,6 @@ async function initApp() {
   /* ローカルキャッシュ読み込みは UID 決定後 */
   loadStampCount();
 
-  /* 🆕 ユーザーと端末の upsert */
-  if (globalUID) {
-    await db
-      .from('users')
-    .upsert({ supabase_uid: globalUID,device_id: deviceId,stamp_count: stampCount }) 
-      .eq('supabase_uid', globalUID)
-      .select();
-  }
 
   /* 通常の同期へ */
   await syncStampFromDB(globalUID);
