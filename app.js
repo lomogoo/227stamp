@@ -239,7 +239,7 @@ function setupEventListeners() {
       target.classList.add('active');
 
       if (link.dataset.section === 'foodtruck-section') {
-        await syncStampFromDB(supaUID);
+        await syncStampFromDB(globalUID);
         updateStampDisplay();
         updateRewardButtons();
       }
@@ -278,7 +278,7 @@ async function initApp() {
 
   /* 🆕 ログイン確認 */
   const { data: { session } } = await db.auth.getSession();
-  const supaUID = session?.user?.id || null;
+  globalUID = session?.user?.id || null;
 
   /* 🆕 ユーザーと端末の upsert */
   if (supaUID) {
@@ -290,14 +290,14 @@ async function initApp() {
   }
 
   /* 通常の同期へ */
-  await syncStampFromDB(supaUID);
+  await syncStampFromDB(globalUID);
   updateStampDisplay();
   updateRewardButtons();
   renderArticles('all');
   setupEventListeners();
 
   /* 🆕 UI 切替（ログインフォームを非表示に）*/
-  if (supaUID) {
+  if (globalUID) {
     document.getElementById('login-form').style.display = 'none';
   }
 }
