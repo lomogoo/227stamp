@@ -94,7 +94,7 @@ async function updateStampCount(newCount) {
   const { error } = await db
     .from('users')
     .update({ stamp_count: newCount, updated_at: new Date().toISOString() })
-    .match(uid ? { supabase_uid: uid, device_id: deviceId }
+    .match(uid ? { supabase_uid: uid　}
                : { device_id: deviceId });
   if (error) console.error('スタンプ更新エラー:', error);
 }
@@ -107,7 +107,7 @@ async function syncStampFromDB(uid = null) {
     .from('users')
     .select('stamp_count')
     .match(match)
-    .maybeSingle();
+    .single();
 
   let remote = 0;
 
