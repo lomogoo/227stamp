@@ -795,6 +795,7 @@ body {
 .section {
   display: none;
   padding: var(--space-16) 0;
+  overflow: visible;
 }
 
 .section.active {
@@ -804,10 +805,18 @@ body {
 /* Category Tabs */
 .category-tabs {
   display: flex;
-  overflow-x: auto;
-  margin-bottom: var(--space-16);
+  justify-content: space-between;  /* 両端揃え */
+  align-items: center;
+  max-width: 640px;                 /* 中央幅の制限 */
+  margin: 0 auto;                   /* 横センター寄せ */
+  padding: var(--space-8) 0;        /* 上下余白 */
+  background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  -webkit-overflow-scrolling: touch;
+  z-index: 100;                     /* ステッキー時に上に出るように */
+  
+  /* スクロールに合わせて上部に固定 */
+  position: sticky;
+  top: calc(var(--space-16) + var(--font-size-2xl)); /* ヘッダー高さ分オフセット (お好みで調整) */
 }
 
 .category-tab {
