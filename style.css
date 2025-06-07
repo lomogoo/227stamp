@@ -807,16 +807,15 @@ body {
   display: flex;
   justify-content: space-between;  /* 両端揃え */
   align-items: center;
-  max-width: 640px;                 /* 中央幅の制限 */
-  margin: 0 auto;                   /* 横センター寄せ */
-  padding: var(--space-8) 0;        /* 上下余白 */
+  max-width: 640px;                /* 中央幅の制限 */
+  margin: 0 auto;                  /* 横センター寄せ */
+  padding: var(--space-8) 0;       /* 上下余白 */
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  z-index: 100;                     /* ステッキー時に上に出るように */
-  
-  /* スクロールに合わせて上部に固定 */
   position: sticky;
-  top: 56px
+  top: 0;                          /* ← 上部にぴったり固定 */
+  z-index: 999;                    /* ← 前面に表示 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04); /* 任意：影で浮いて見せる */
 }
 
 .category-tab {
