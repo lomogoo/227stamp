@@ -344,6 +344,9 @@ async function initApp() {
   /* 🆕 ログイン確認 */
   const { data: { session } } = await db.auth.getSession();
   globalUID = session?.user?.id || null;
+
+   // ★ リロード時にモーダルが残っていたら必ず閉じる
+　if (globalUID) document.getElementById('login-modal')?.classList.remove('active');
   /* ローカルキャッシュ読み込みは UID 決定後 */
   loadStampCount();
 
