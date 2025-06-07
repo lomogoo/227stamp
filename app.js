@@ -196,6 +196,7 @@ function closeModal(modal) {
 // Setup Event Listeners
 function setupEventListeners() {
   navLinks.forEach(link => link.addEventListener('click', () => {
+    /* 既存のセクション切り替え */
     navLinks.forEach(n => n.classList.remove('active'));
     link.classList.add('active');
     sections.forEach(sec => sec.classList.remove('active'));
@@ -203,6 +204,7 @@ function setupEventListeners() {
   }));
 
   categoryTabs.forEach(tab => tab.addEventListener('click', () => {
+    /* カテゴリ切り替え */
     categoryTabs.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     renderArticles(tab.dataset.category);
@@ -213,14 +215,23 @@ function setupEventListeners() {
     initQRScanner();
   });
 
-  closeModalButtons.forEach(btn => btn.addEventListener('click', () =>
-    closeModal(btn.closest('.modal'))
-  ));
+  // 227ボタン（ページトップへスムーススクロール）
+  const bottom227 = document.querySelector('.footer-nav .nav-item:first-child .nav-link');
+  bottom227.addEventListener('click', () => {
+    // 既存のタブ切り替えなど動かしたい場合はここで処理
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // モーダルクローズ
+  closeModalButtons.forEach(btn =>
+    btn.addEventListener('click', () => closeModal(btn.closest('.modal')))
+  );
 
   closeNotificationButton.addEventListener('click', () =>
     closeModal(notificationModal)
   );
 
+  // 交換ボタン
   coffeeRewardButton.addEventListener('click', () => redeemReward('coffee'));
   curryRewardButton.addEventListener('click', () => redeemReward('curry'));
 }
