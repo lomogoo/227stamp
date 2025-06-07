@@ -33,8 +33,13 @@ async function getOrCreateUser(deviceId) {
 
 // ✅ Supabaseから読み込んだstampCountだけを使う
 async function syncStampFromDB() {
-  const deviceId = localStorage.getItem('deviceId');
-  if (!deviceId) return;
+  let deviceId = localStorage.getItem('deviceId');
+
+  // ← 初回起動時に deviceId を発行して保存
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem('deviceId', deviceId);
+  }
 
   const user = await getOrCreateUser(deviceId);
   if (user) {
@@ -89,8 +94,8 @@ const notificationMessage   = document.getElementById('notification-message');
 
 let stampCount = 0;
 
-function initApp() {
-  loadStampCount();
+async function initApp() {
+  await syncStampFromDB(); // ← これ追加（必ず一番上で）
   renderArticles('all');
   updateStampDisplay();
   updateRewardButtons();
@@ -233,4 +238,8 @@ function setupEventListeners() {
   curryRewardButton.addEventListener('click',()=>redeemReward('curry'));
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', () => {
+  (async () => {
+    await initApp();
+  })();
+});
