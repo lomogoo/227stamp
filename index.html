@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Route227Cafe</title>
+  <title>Route227</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
@@ -53,6 +53,21 @@
                 <div class="stamp" data-stamp-id="6"></div>
               </div>
             </div>
+
+        <!-- QR Scanner Modal -->
+        <div class="modal" id="qr-modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>QRコードをスキャン</h3>
+              <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div id="qr-reader"></div>
+              <div id="qr-result"></div>
+            </div>
+          </div>
+        </div>
+            
             <div class="rewards-container">
               <div class="reward-item">
                 <h3>3スタンプ</h3>
@@ -71,19 +86,6 @@
           </div>
         </div>
 
-        <!-- QR Scanner Modal -->
-        <div class="modal" id="qr-modal">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>QRコードをスキャン</h3>
-              <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-              <div id="qr-reader"></div>
-              <div id="qr-result"></div>
-            </div>
-          </div>
-        </div>
 
         <!-- Notification Modal -->
         <div class="modal" id="notification-modal">
