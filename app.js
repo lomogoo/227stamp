@@ -365,27 +365,33 @@ function loadStampCount() {
 }
 
 async function initApp() {
-  /* 🆕 ログイン確認 */
-  /* 以下の認証関連の処理は onAuthStateChange に移管したため削除します */
-  // const { data: { session } } = await db.auth.getSession();
-  // globalUID = session?.user?.id || null;
-  // if (globalUID) {
-  //   document.getElementById('login-modal')?.classList.remove('active');
-  // }
-  // loadStampCount();
-  // if (globalUID) {
-  //   stampCount = await fetchOrCreateUserRow(globalUID);
-  // } else {
-  //   stampCount = 0;
-  // }
-  // updateStampDisplay();
-  // updateRewardButtons();
-  // if (globalUID) {
-  //   document.getElementById('login-form').remove();
-  // }
+  async function initApp() {
+  // 1) セッション取得
+  const { data: { session } } = await db.auth.getSession();
+  globalUID = session?.user?.id || null;
+
+  if (globalUID) {
+    // ログイン済みならモーダルを閉じる
+    document.getElementById('login-modal')?.classList.remove('active');
+
+    // 2) 【DB優先】スタンプ数を取得
+    //    fetchOrCreateUserRow が「DBからスタンプ数を返す」ユーティリティ関数
+    stampCount = await fetchOrCreateUserRow(globalUID);
+
+    // 3) 念のためローカルにもキャッシュ
+    localStorage.setItem('route227_stamps', stampCount.toString());
+  } else {
+    stampCount = 0;
+  }
+
+  // 4) UI更新
+  updateStampDisplay();
+  updateRewardButtons();
+
+  // 5) 既存のレンダリング／イベントバインド
   renderArticles('all');
   setupEventListeners();
-  }
+}
 }
 
 /* ---------- 起動 ---------- */
