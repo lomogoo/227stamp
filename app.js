@@ -300,12 +300,22 @@ function closeModal(m){ m.classList.remove('active'); }
 /* ---------- イベントバインド ---------- */
 function setupEventListeners() {
   if (eventBound) return;
+  const navLinksElements = document.querySelectorAll('.nav-link');
+  const sectionsElements = document.querySelectorAll('.section');
+  const categoryTabsElements = document.querySelectorAll('.category-tab');
+  
+  if (!navLinksElements.length || !sectionsElements.length) {
+    console.error('Required DOM elements not found');
+    return;
+  }
+  
   eventBound = true;
 
   // nav リスナー
-  navLinks.forEach(link => {
+  navLinksElements.forEach(link => {
     link.addEventListener('click', async (e) => {
-      e.preventDefault(); // デフォルト動作を防ぐ
+      e.preventDefault();
+      e.stopPropagation();
       
       // アクティブ状態を更新
       navLinks.forEach(n => n.classList.remove('active'));
@@ -336,6 +346,20 @@ function setupEventListeners() {
         }
       }
     }, { passive: false }); // passive: false でpreventDefaultを有効に
+  });
+
+  categoryTabsElements.forEach(tab => {
+    tab.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // アクティブ状態更新
+      categoryTabsElements.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      const category = tab.dataset.category;
+      await renderArticles(category);
+    });
   });
 
   /* カテゴリタブ */
@@ -375,47 +399,88 @@ function loadStampCount() {
 }
 
 async function initApp() {
+  console.log('Initializing app...');
+  
   try {
-    // より確実なセッション取得
-    const { data: { session }, error } = await db.auth.getSession();
+    // Supabaseの初期化確認
+    if (!db || !db.auth) {
+      throw new Error('Supabase not properly initialized');
+    }
     
-    if (error) {
+    // 認証状態の取得（タイムアウト付き）
+    const sessionPromise = db.auth.getSession();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Session timeout')), 5000)
+    );
+    
+    const { data: { session }, error } = await Promise.race([
+      sessionPromise, 
+      timeoutPromise
+    ]);
+    
+    if (error && error.message !== 'Session timeout') {
       console.error('Session error:', error);
     }
     
     globalUID = session?.user?.id || null;
     console.log('Session loaded:', { globalUID, session: !!session });
 
-    // ログイン状態に関係なく基本機能を初期化
+    // 基本機能の初期化（エラーがあっても実行）
     setupEventListeners();
-    renderArticles('all');
+    await renderArticles('all');
     
-    // ログイン状態に応じた処理
+    // 認証関連の初期化
     if (globalUID) {
-      document.getElementById('login-modal')?.classList.remove('active');
       stampCount = await fetchOrCreateUserRow(globalUID);
       updateStampDisplay();
       updateRewardButtons();
       
-      // ログインフォームを削除（存在する場合のみ）
-      const loginForm = document.getElementById('login-form');
-      if (loginForm) {
-        loginForm.remove();
+      const loginModal = document.getElementById('login-modal');
+      if (loginModal) {
+        loginModal.classList.remove('active');
       }
     } else {
-      // 未ログイン時の初期化
       stampCount = 0;
       updateStampDisplay();
       updateRewardButtons();
     }
     
+    console.log('App initialized successfully');
+    
   } catch (error) {
     console.error('Init error:', error);
-    // エラー時も基本機能は動作させる
-    setupEventListeners();
-    renderArticles('all');
+    
+    // エラー時のフォールバック処理
+    try {
+      setupEventListeners();
+      await renderArticles('all');
+      console.log('Fallback initialization completed');
+    } catch (fallbackError) {
+      console.error('Fallback failed:', fallbackError);
+    }
   }
 }
 
+
 /* ---------- 起動 ---------- */
-document.addEventListener('DOMContentLoaded', initApp);
+// 現在の initApp() の呼び出しを削除し、以下に置き換え
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('DOM Content Loaded');
+  
+  // 少し待ってから初期化（CSSとSupabaseの読み込み完了を待つ）
+  setTimeout(async () => {
+    try {
+      await initApp();
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+      // フォールバック処理
+      setupEventListeners();
+      renderArticles('all');
+    }
+  }, 100);
+});
+
+// Supabaseが確実に読み込まれているかチェック
+if (typeof supabase === 'undefined') {
+  console.error('Supabase not loaded');
+}
