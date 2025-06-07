@@ -6,15 +6,34 @@ const db = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k' // ★正しい anon 公開キー
 );
 
+// app.js
+
 db.auth.onAuthStateChange(async (event, session) => {
-  if (event !== 'SIGNED_IN') return;   // それ以外は無視
+  // 変更前: if (event !== 'SIGNED_IN') return;
+  // 変更後: sessionオブジェクトの有無でログイン状態を一元管理する
+  if (session && session.user) {
+    // ログイン状態の場合 (初回ログイン、リロード後の復元を含む)
+    globalUID = session.user.id;
+    stampCount = await fetchOrCreateUserRow(globalUID); // DBから最新情報を取得
 
-  globalUID = session.user.id;
-  stampCount = await fetchOrCreateUserRow(globalUID);
+    // UIを更新
+    updateStampDisplay();
+    updateRewardButtons();
+    document.getElementById('login-modal')?.classList.remove('active');
 
-  updateStampDisplay();
-  updateRewardButtons();
-  document.getElementById('login-modal')?.classList.remove('active');
+    // ログインフォームが不要になるため削除
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+      loginForm.remove();
+    }
+  } else {
+    // ログアウト状態の場合
+    globalUID = null;
+    stampCount = 0;
+    // ログアウト状態に合わせてUIを更新
+    updateStampDisplay();
+    updateRewardButtons();
+  }
 });
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -347,31 +366,25 @@ function loadStampCount() {
 
 async function initApp() {
   /* 🆕 ログイン確認 */
-  const { data: { session } } = await db.auth.getSession();
-  globalUID = session?.user?.id || null;
-  
-  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
-
-   // ★ リロード時にモーダルが残っていたら必ず閉じる
-  if (globalUID) {
-   document.getElementById('login-modal')?.classList.remove('active');
- }
-  /* ローカルキャッシュ読み込みは UID 決定後 */
-  loadStampCount();
-
-  if (globalUID) {
-    stampCount = await fetchOrCreateUserRow(globalUID);   // ★ 差し替え
-  } else {
-    stampCount = 0;                                       // ★ 差し替え
-  }
-  updateStampDisplay();
-  updateRewardButtons();
+  /* 以下の認証関連の処理は onAuthStateChange に移管したため削除します */
+  // const { data: { session } } = await db.auth.getSession();
+  // globalUID = session?.user?.id || null;
+  // if (globalUID) {
+  //   document.getElementById('login-modal')?.classList.remove('active');
+  // }
+  // loadStampCount();
+  // if (globalUID) {
+  //   stampCount = await fetchOrCreateUserRow(globalUID);
+  // } else {
+  //   stampCount = 0;
+  // }
+  // updateStampDisplay();
+  // updateRewardButtons();
+  // if (globalUID) {
+  //   document.getElementById('login-form').remove();
+  // }
   renderArticles('all');
   setupEventListeners();
-
-  /* 🆕 UI 切替（ログインフォームを非表示に）*/
-  if (globalUID) {
-    document.getElementById('login-form').remove();
   }
 }
 
