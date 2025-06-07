@@ -95,6 +95,49 @@ function initApp() {
   setupEventListeners();
 }
 
+  // 🔽 ここからMachico記事の読み込み処理を追加！
+  const externalArticles = [
+    { url: "https://machico.mu/special/detail/2691", category: "イベント" },
+    { url: "https://machico.mu/special/detail/2704", category: "イベント" },
+    { url: "https://machico.mu/jump/ad/102236", category: "ニュース" },
+    { url: "https://machico.mu/special/detail/2926", category: "ニュース" },
+  ];
+
+  const feedSection = document.getElementById("feed-section");
+
+  if (feedSection) {
+    externalArticles.forEach(({ url, category }) => {
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
+        .then(res => res.json())
+        .then(data => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(data.contents, "text/html");
+
+          const title = doc.querySelector("meta[property='og:title']")?.content || "タイトルなし";
+          const description = doc.querySelector("meta[property='og:description']")?.content || "説明なし";
+          const image = doc.querySelector("meta[property='og:image']")?.content || "";
+
+          const card = document.createElement("div");
+          card.className = "article-card";
+          card.innerHTML = `
+            <a href="${url}" target="_blank" rel="noopener noreferrer">
+              <img src="${image}" alt="${title}">
+              <div class="article-content">
+                <div class="article-category">${category}</div>
+                <div class="article-title">${title}</div>
+                <div class="article-summary">${description}</div>
+              </div>
+            </a>
+          `;
+          feedSection.appendChild(card);
+        })
+        .catch(err => {
+          console.error("記事取得エラー:", err);
+        });
+    });
+  }
+}
+
 // Load stamp count from localStorage
 function loadStampCount() {
   const savedStamps = localStorage.getItem('route227_stamps');
