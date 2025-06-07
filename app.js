@@ -110,15 +110,17 @@ async function syncStampFromDB(uid = null) {
 
   /* ▼▼ ここを修正 ▼▼ */
   if (!data) {
-    // ― 新規ユーザー作成 ―
-    const row = { device_id: deviceId, stamp_count: stampCount };
-    if (uid) row.supabase_uid = uid;
-    const { error: insertError } = await db.from('users').insert([row]);
-    if (insertError) {
-      console.error('INSERT error', insertError);
-    }
-    remote = stampCount;            // 406 を避けるため select は省略
-  } else {
+  if (!uid) {
+    console.warn('ログインしていないため INSERT をスキップ');
+    return;
+  }
+  const row = { device_id: deviceId, stamp_count: stampCount, supabase_uid: uid };
+  const { error: insertError } = await db.from('users').insert([row]);
+  if (insertError) {
+    console.error('INSERT error', insertError);
+  }
+  remote = stampCount;
+  }　else {
     remote = data?.stamp_count ?? 0;
   }
   /* ▲▲ 修正ここまで ▲▲ */
