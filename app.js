@@ -345,6 +345,8 @@ async function initApp() {
   /* 🆕 ログイン確認 */
   const { data: { session } } = await db.auth.getSession();
   globalUID = session?.user?.id || null;
+  
+  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
 
    // ★ リロード時にモーダルが残っていたら必ず閉じる
   if (globalUID) {
