@@ -9,8 +9,11 @@ const db = window.supabase.createClient(
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value;
-  const { error } = await db.auth.signInWithOtp({ email });
-
+  const { error } = await db.auth.signInWithOtp({ email,
+                                                 options: {
+                                                   emailRedirectTo: 'https://lomogoo.github.io/227stamp/'
+  }});
+  
   const msg = document.getElementById('login-message');
   if (error) {
     msg.textContent = '❌ メール送信に失敗しました';
