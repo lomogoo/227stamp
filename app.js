@@ -6,7 +6,7 @@ const db = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k' // ★正しい anon 公開キー
 );
 
-db.auth.onAuthStateChange((_event, session) => {
+db.auth.onAuthStateChange((event, session) => {
   // マジックリンク直後は URL に access_token または type=magiclink 等が付く
   if (window.location.hash.includes('access_token') &&
     !sessionStorage.getItem('reloadedOnce')
@@ -82,11 +82,6 @@ const scanQrButton          = document.getElementById('scan-qr');
 const stamps                = document.querySelectorAll('.stamp');
 
 /* ---------- 共通ユーティリティ ---------- */
-// localStorage → stampCount
-function loadStampCount() {
-  const saved = localStorage.getItem('route227_stamps');
-  if (saved !== null) stampCount = parseInt(saved, 10);
-}
 
 // Supabase UPDATE
 async function updateStampCount(newCount) {
@@ -109,12 +104,12 @@ async function syncStampFromDB(uid = null) {
     .from('users')
     .select('stamp_count')
     .match(match)
-    .single();
+    .maybeSingle();
 
   let remote = 0;
 
   /* ▼▼ ここを修正 ▼▼ */
-  if (error && !data) {
+  if (!data) {
     // ― 新規ユーザー作成 ―
     const row = { device_id: deviceId, stamp_count: stampCount };
     if (uid) row.supabase_uid = uid;
@@ -143,6 +138,11 @@ function updateStampDisplay() {
     i < stampCount ? el.classList.add('active') : el.classList.remove('active'));
 }
 
+function saveLocalStamp() { 
+  if (!globalUID) return; localStorage.setItem('route227_stamps', stampCount);
+}
+
+
 // 報酬ボタン
 function updateRewardButtons() {
   coffeeRewardButton.disabled = stampCount < 3;
@@ -158,9 +158,13 @@ function showNotification(title, msg) {
 
 // スタンプ＋1
 async function addStamp() {
+  if (!globalUID) {
+  showNotification('要ログイン', '先にログインしてください');
+  return;
+}
   if (stampCount >= 6) return;
   stampCount++;
-  localStorage.setItem('route227_stamps', stampCount);
+  saveLocalStamp();
   await updateStampCount(stampCount);
 
   updateStampDisplay();
@@ -278,6 +282,8 @@ function setupEventListeners() {
     }, { passive:true });
   });
 
+  
+
   /* カテゴリタブ */
   categoryTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -305,12 +311,21 @@ function setupEventListeners() {
   curryRewardButton .addEventListener('click', () => redeemReward('curry'));
 }
 
-async function initApp() {
-  loadStampCount();
+function loadStampCount() {
+  if (!globalUID) {            // ログイン必須
+    stampCount = 0;
+    return;
+  }
+  const saved = localStorage.getItem('route227_stamps');
+  stampCount = saved ? parseInt(saved, 10) : 0;
+}
 
+async function initApp() {
   /* 🆕 ログイン確認 */
   const { data: { session } } = await db.auth.getSession();
   globalUID = session?.user?.id || null;
+  /* ローカルキャッシュ読み込みは UID 決定後 */
+  loadStampCount();
 
   /* 🆕 ユーザーと端末の upsert */
   if (globalUID) {
@@ -323,6 +338,7 @@ async function initApp() {
 
   /* 通常の同期へ */
   await syncStampFromDB(globalUID);
+  if (globalUID) { localStorage.setItem('route227_stamps', stampCount); }
   updateStampDisplay();
   updateRewardButtons();
   renderArticles('all');
