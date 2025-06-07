@@ -347,7 +347,7 @@ async function initApp() {
   globalUID = session?.user?.id || null;
 
    // ★ リロード時にモーダルが残っていたら必ず閉じる
-　if (globalUID) {
+  if (globalUID) {
    document.getElementById('login-modal')?.classList.remove('active');
  }
   /* ローカルキャッシュ読み込みは UID 決定後 */
