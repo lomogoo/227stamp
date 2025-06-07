@@ -95,48 +95,6 @@ function initApp() {
   setupEventListeners();
 }
 
-  // 🔽 ここからMachico記事の読み込み処理を追加！
-  const externalArticles = [
-    { url: "https://machico.mu/special/detail/2691", category: "イベント" },
-    { url: "https://machico.mu/special/detail/2704", category: "イベント" },
-    { url: "https://machico.mu/jump/ad/102236", category: "ニュース" },
-    { url: "https://machico.mu/special/detail/2926", category: "ニュース" },
-  ];
-
-  const feedSection = document.getElementById("feed-section");
-
-  if (feedSection) {
-    externalArticles.forEach(({ url, category }) => {
-      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
-        .then(res => res.json())
-        .then(data => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(data.contents, "text/html");
-
-          const title = doc.querySelector("meta[property='og:title']")?.content || "タイトルなし";
-          const description = doc.querySelector("meta[property='og:description']")?.content || "説明なし";
-          const image = doc.querySelector("meta[property='og:image']")?.content || "";
-
-          const card = document.createElement("div");
-          card.className = "article-card";
-          card.innerHTML = `
-            <a href="${url}" target="_blank" rel="noopener noreferrer">
-              <img src="${image}" alt="${title}">
-              <div class="article-content">
-                <div class="article-category">${category}</div>
-                <div class="article-title">${title}</div>
-                <div class="article-summary">${description}</div>
-              </div>
-            </a>
-          `;
-          feedSection.appendChild(card);
-        })
-        .catch(err => {
-          console.error("記事取得エラー:", err);
-        });
-    });
-  }
-}
 
 // Load stamp count from localStorage
 function loadStampCount() {
@@ -282,17 +240,18 @@ function initQRScanner() {
 // Render articles based on selected category
 function renderArticles(category) {
   articlesContainer.innerHTML = '';
-  
+
+  // 自社記事のフィルタリングと表示
   const filteredArticles = category === 'all' 
     ? appData.articles 
     : appData.articles.filter(article => article.category === category);
-  
+
   filteredArticles.forEach(article => {
     const articleElement = document.createElement('div');
     articleElement.className = 'card article-card';
-    
+
     const formattedDate = formatDate(article.date);
-    
+
     articleElement.innerHTML = `
       <div class="card__body">
         <span class="article-category">${article.category}</span>
@@ -301,9 +260,49 @@ function renderArticles(category) {
         <p class="article-excerpt">${article.excerpt}</p>
       </div>
     `;
-    
+
     articlesContainer.appendChild(articleElement);
   });
+
+    // 🔽 Machico記事を追加（全カテゴリ表示時のみ）
+  if (category === 'all') {
+    const externalArticles = [
+      { url: "https://machico.mu/special/detail/2691", category: "イベント" },
+      { url: "https://machico.mu/special/detail/2704", category: "イベント" },
+      { url: "https://machico.mu/jump/ad/102236", category: "ニュース" },
+      { url: "https://machico.mu/special/detail/2926", category: "ニュース" },
+    ];
+
+    externalArticles.forEach(({ url, category }) => {
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
+        .then(res => res.json())
+        .then(data => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(data.contents, "text/html");
+
+          const title = doc.querySelector("meta[property='og:title']")?.content || "タイトルなし";
+          const description = doc.querySelector("meta[property='og:description']")?.content || "説明なし";
+          const image = doc.querySelector("meta[property='og:image']")?.content || "";
+
+          const card = document.createElement("div");
+          card.className = "card article-card";
+          card.innerHTML = `
+            <a href="${url}" target="_blank" rel="noopener noreferrer">
+              <img src="${image}" alt="${title}" />
+              <div class="card__body">
+                <span class="article-category">${category}</span>
+                <h3 class="article-title">${title}</h3>
+                <p class="article-excerpt">${description}</p>
+              </div>
+            </a>
+          `;
+          articlesContainer.appendChild(card);
+        })
+        .catch(err => {
+          console.error("Machico記事取得エラー:", err);
+        });
+    });
+  }
 }
 
 // Format date to Japanese style
