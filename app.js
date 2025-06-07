@@ -289,7 +289,8 @@ function setupEventListeners() {
       if (link.dataset.section === 'foodtruck-section') {
         if (!globalUID) {
     // 未ログインならログインモーダルを表示して処理を中断
-          document.getElementById('login-modal').classList.add('active');
+          const m = document.getElementById('login-modal');
+          if (m) m.classList.add('active');      // 要素が無いときは何もしない
           return;
         }
         
