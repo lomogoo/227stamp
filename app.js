@@ -6,27 +6,15 @@ const db = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k' // ★正しい anon 公開キー
 );
 
-db.auth.onAuthStateChange((event, session) => {
-  // マジックリンク直後は URL に access_token または type=magiclink 等が付く
-  if (window.location.hash.includes('access_token') &&
-    !sessionStorage.getItem('reloadedOnce')
-     ) {
-    sessionStorage.setItem('reloadedOnce', '1');   // ← 1回きり
-    location.replace('https://lomogoo.github.io/227stamp/');
- }
-  // ---- 追加ここから ----
-  if (event === 'SIGNED_IN') {
-    globalUID = session?.user?.id || null;
-    // モーダルを閉じ、カードを同期
-    document.getElementById('login-modal').classList.remove('active');
-    (async () => {
-      await syncStampFromDB(globalUID);
-      updateStampDisplay();
-      updateRewardButtons();
-    })();
-  }
-  // ---- 追加ここまで ----
-  
+db.auth.onAuthStateChange(async (event, session) => {
+  if (event !== 'SIGNED_IN') return;   // それ以外は無視
+
+  globalUID = session.user.id;
+  stampCount = await fetchOrCreateUserRow(globalUID);
+
+  updateStampDisplay();
+  updateRewardButtons();
+  document.getElementById('login-modal')?.classList.remove('active');
 });
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -62,6 +50,39 @@ let html5QrCode = null;
 let eventBound  = false;
 let globalUID   = null;
 
+/**
+ * supabase_uid で必ず 1行読む
+ * 404 → 行が無いので作成
+ * 200 → 行あり
+ */
+async function fetchOrCreateUserRow(uid) {
+  try {
+    // 1) supabase_uid だけで取得（deviceId 無視）
+    const { data, error, status } = await db
+      .from('users')
+      .select('stamp_count')
+      .eq('supabase_uid', uid)
+      .single();                // ここがポイント
+
+    if (status === 404) {
+      // 2) 行が無ければ 0 で作成
+      const { data: inserted, error: iErr } = await db
+        .from('users')
+        .insert([{ supabase_uid: uid, stamp_count: 0 }])
+        .select()
+        .single();
+      if (iErr) throw iErr;
+      return inserted.stamp_count;        // ← 0
+    }
+    if (error) throw error;
+
+    return data.stamp_count;              // ← 既存値
+  } catch (err) {
+    console.error('[fetchOrCreateUserRow]', err);
+    return 0; // フォールバック
+  }
+}
+
 /* 3) アプリ固有データ */
 const appData = {
   rewards: [
@@ -94,30 +115,24 @@ async function updateStampCount(newCount) {
   const { error } = await db
     .from('users')
     .update({ stamp_count: newCount, updated_at: new Date().toISOString() })
-    .match(uid ? { supabase_uid: uid　}
-               : { device_id: deviceId });
+    .eq('supabase_uid', globalUID);
   if (error) console.error('スタンプ更新エラー:', error);
 }
 
-async function syncStampFromDB(uid = null) {
-  const match = uid ? { supabase_uid: uid, device_id: deviceId }
-                    : { device_id: deviceId };
+async function syncStampFromDB(uid) {
+  if (!uid) return;                // 未ログインなら何もしない
 
-  const { data, error } = await db
+  const { data, error, status } = await db
     .from('users')
     .select('stamp_count')
-    .match(match)
+    .eq('supabase_uid', uid)       // ★ UID だけ
     .single();
 
   let remote = 0;
 
   /* ▼▼ ここを修正 ▼▼ */
   if (!data) {
-  if (!uid) {
-    console.warn('ログインしていないため INSERT をスキップ');
-    return;
-  }
-  const row = { device_id: deviceId, stamp_count: stampCount, supabase_uid: uid };
+  const row = { supabase_uid: uid, stamp_count: stampCount };
   const { error: insertError } = await db.from('users').insert([row]);
   if (insertError) {
     console.error('INSERT error', insertError);
@@ -332,10 +347,11 @@ async function initApp() {
   /* ローカルキャッシュ読み込みは UID 決定後 */
   loadStampCount();
 
-
-  /* 通常の同期へ */
-  await syncStampFromDB(globalUID);
-  if (globalUID) { localStorage.setItem('route227_stamps', stampCount); }
+  if (globalUID) {
+    stampCount = await fetchOrCreateUserRow(globalUID);   // ★ 差し替え
+  } else {
+    stampCount = 0;                                       // ★ 差し替え
+  }
   updateStampDisplay();
   updateRewardButtons();
   renderArticles('all');
