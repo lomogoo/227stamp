@@ -8,29 +8,33 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
+  <!-- Header -->
   <header class="app-header">
     <div class="container">
       <h1 class="app-title">Route227Cafe</h1>
     </div>
   </header>
 
+  <!-- Main Content -->
   <main class="app-content">
+
     <!-- Feed Section -->
     <section id="feed-section" class="section active">
       <div class="container">
+        <!-- Category Tabs -->
         <div class="category-tabs">
           <button class="category-tab active" data-category="all">ALL</button>
           <button class="category-tab" data-category="イベント">イベント</button>
           <button class="category-tab" data-category="お店">お店</button>
           <button class="category-tab" data-category="ニュース">ニュース</button>
         </div>
-        <!-- 記事一覧を表示するブロック -->
-        <div id="feed-section" class="article-feed">
-          <!-- 記事カードがここにJSで追加される -->
+        <!-- Articles Container (自社記事 + Machico記事) -->
+        <div class="articles-container" id="articles-container">
+          <!-- JS で .article-card を動的追加 -->
         </div>
       </div>
     </section>
-    
+
     <!-- FoodTruck Section -->
     <section id="foodtruck-section" class="section">
       <div class="container">
@@ -94,8 +98,10 @@
             </div>
           </div>
         </div>
+
       </div>
     </section>
+
   </main>
 
   <!-- Footer Navigation -->
@@ -113,6 +119,7 @@
             <span>🚚</span>
             FoodTruck
           </button>
+        </li>
       </ul>
     </div>
   </nav>
