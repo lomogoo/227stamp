@@ -40,7 +40,6 @@
           <div class="card__body">
             <div class="stamp-container">
               <div class="stamp-grid">
-                <!-- Stamps will be dynamically inserted here -->
                 <div class="stamp" data-stamp-id="1"></div>
                 <div class="stamp" data-stamp-id="2"></div>
                 <div class="stamp" data-stamp-id="3"></div>
@@ -98,19 +97,32 @@
     </section>
   </main>
 
-<nav class="footer-nav">
-  <div class="container">
-    <ul class="nav-tabs">
-      <li class="nav-item">
-        <button class="nav-link active" data-section="feed-section">227</button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" data-section="foodtruck-section">FoodTruck</button>
-      </li>
-    </ul>
-  </div>
-</nav>
-  
+  <!-- Footer Navigation -->
+  <nav class="footer-nav">
+    <div class="container">
+      <ul class="nav-tabs">
+        <li class="nav-item">
+          <button class="nav-link active" data-section="feed-section">
+            <span>⛰️</span>
+            227
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-section="foodtruck-section">
+            <span>🚚</span>
+            FoodTruck
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-section="ai-section">
+            <span>🤖</span>
+            AI検索
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
   <script src="app.js"></script>
 </body>
 </html>
