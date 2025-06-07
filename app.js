@@ -365,7 +365,6 @@ function loadStampCount() {
 }
 
 async function initApp() {
-  async function initApp() {
   // 1) セッション取得
   const { data: { session } } = await db.auth.getSession();
   globalUID = session?.user?.id || null;
@@ -391,7 +390,6 @@ async function initApp() {
   // 5) 既存のレンダリング／イベントバインド
   renderArticles('all');
   setupEventListeners();
-}
 }
 
 /* ---------- 起動 ---------- */
