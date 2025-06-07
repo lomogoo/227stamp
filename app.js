@@ -127,7 +127,14 @@ function loadStampCount() {
 async function saveStampCount() {
   localStorage.setItem('route227_stamps', stampCount.toString());
   const deviceId = localStorage.getItem('deviceId');
-  if (deviceId) await updateStampCount(deviceId, stampCount);
+  if (deviceId) {
+    try {
+      await updateStampCount(deviceId, stampCount);
+      console.log('スタンプ数をDBに保存:', stampCount); // デバッグ用
+    } catch (error) {
+      console.error('DB保存エラー:', error);
+    }
+  }
 }
 
 function updateStampDisplay() {
@@ -249,11 +256,13 @@ function setupEventListeners() {
   document.querySelector('.footer-nav .nav-item:first-child .nav-link')
     .addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
 
-  closeModalButtons.forEach(btn=>btn.addEventListener('click',()=>closeModal(btn.closest('.modal'))));
-  // app.js の setupEventListeners 関数内
+ // 通知モーダル閉じるときの処理を明確化
 closeNotificationButton.addEventListener('click', (event) => {
-  event.stopPropagation(); // これを追加！イベントが親要素へ伝わるのを防ぎます
+  event.stopPropagation();
+  event.preventDefault(); // ← 追加
   closeModal(notificationModal);
+  // 念のため表示を再同期
+  updateStampDisplay();
 });
 
   coffeeRewardButton.addEventListener('click',()=>redeemReward('coffee'));
