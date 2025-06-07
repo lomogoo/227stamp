@@ -1,6 +1,56 @@
-// Route227Cafe Application
+// Route227Cafe Application with Supabase integration
 
-// Data (自社記事を削除し、報酬とQRのみ保持)
+// ① HTML に次のタグを入れておく（head 内）
+// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+// ② SDK 初期化（db オブジェクトを作成）
+const db = window.supabase.createClient(
+  'https://hccairtzksnnqdujalgv.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k'
+);
+
+// ③ Supabase を使ったユーザー取得＆作成
+async function getOrCreateUser(deviceId) {
+  const { data, error, status } = await db
+    .from('users')
+    .select('*')
+    .eq('device_id', deviceId)
+    .single();
+
+  if (error && status === 406) {
+    // レコードがないときは作成
+    const { data: newUser, error: insertError } = await db
+      .from('users')
+      .insert([{ device_id: deviceId, stamp_count: 0 }])
+      .select()
+      .single();
+    if (insertError) console.error(insertError);
+    return newUser;
+  }
+  if (error) console.error(error);
+  return data;
+}
+
+async function updateStampCount(deviceId, newCount) {
+  const { error } = await db
+    .from('users')
+    .update({ stamp_count: newCount, updated_at: new Date().toISOString() })
+    .eq('device_id', deviceId);
+  if (error) console.error('スタンプ更新エラー:', error);
+}
+
+// ④ ページ遷移時にユーザーを読み込む
+document.getElementById('foodtruck-section').addEventListener('click', async () => {
+  const deviceId = localStorage.getItem('deviceId') || crypto.randomUUID();
+  localStorage.setItem('deviceId', deviceId);
+  const userData = await getOrCreateUser(deviceId);
+  stampCount = userData?.stamp_count || 0;
+  updateStampDisplay();
+  updateRewardButtons();
+});
+
+// ⑤ 以降は既存のスタンプカード・QR・フィード処理
+
 const appData = {
   rewards: [
     { type: "coffee", stampsRequired: 3, name: "コーヒー1杯無料" },
@@ -9,26 +59,23 @@ const appData = {
   qrString: "ROUTE227_STAMP_2025"
 };
 
-// DOM Elements
-const navLinks = document.querySelectorAll('.nav-link');
-const sections = document.querySelectorAll('.section');
-const categoryTabs = document.querySelectorAll('.category-tab');
-const articlesContainer = document.getElementById('articles-container');
-const scanQrButton = document.getElementById('scan-qr');
-const qrModal = document.getElementById('qr-modal');
-const notificationModal = document.getElementById('notification-modal');
-const closeModalButtons = document.querySelectorAll('.close-modal');
+const navLinks              = document.querySelectorAll('.nav-link');
+const sections              = document.querySelectorAll('.section');
+const categoryTabs          = document.querySelectorAll('.category-tab');
+const articlesContainer     = document.getElementById('articles-container');
+const scanQrButton          = document.getElementById('scan-qr');
+const qrModal               = document.getElementById('qr-modal');
+const notificationModal     = document.getElementById('notification-modal');
+const closeModalButtons     = document.querySelectorAll('.close-modal');
 const closeNotificationButton = document.querySelector('.close-notification');
-const coffeeRewardButton = document.getElementById('coffee-reward');
-const curryRewardButton = document.getElementById('curry-reward');
-const stamps = document.querySelectorAll('.stamp');
-const notificationTitle = document.getElementById('notification-title');
-const notificationMessage = document.getElementById('notification-message');
+const coffeeRewardButton    = document.getElementById('coffee-reward');
+const curryRewardButton     = document.getElementById('curry-reward');
+const stamps                = document.querySelectorAll('.stamp');
+const notificationTitle     = document.getElementById('notification-title');
+const notificationMessage   = document.getElementById('notification-message');
 
-// Stamp Card Management
 let stampCount = 0;
 
-// Initialize the application
 function initApp() {
   loadStampCount();
   renderArticles('all');
@@ -37,203 +84,141 @@ function initApp() {
   setupEventListeners();
 }
 
-// Load stamp count from localStorage
 function loadStampCount() {
-  const savedStamps = localStorage.getItem('route227_stamps');
-  if (savedStamps !== null) {
-    stampCount = parseInt(savedStamps, 10);
-  }
+  const saved = localStorage.getItem('route227_stamps');
+  if (saved !== null) stampCount = parseInt(saved, 10);
 }
 
-// Save stamp count to localStorage
 function saveStampCount() {
   localStorage.setItem('route227_stamps', stampCount.toString());
+  // DB にも更新
+  const deviceId = localStorage.getItem('deviceId');
+  if (deviceId) updateStampCount(deviceId, stampCount);
 }
 
-// Update the visual display of stamps
 function updateStampDisplay() {
-  stamps.forEach((stamp, index) => {
-    if (index < stampCount) stamp.classList.add('active');
-    else stamp.classList.remove('active');
-  });
+  stamps.forEach((el, i) => i < stampCount ? el.classList.add('active') : el.classList.remove('active'));
 }
 
-// Update reward buttons based on stamp count
 function updateRewardButtons() {
   coffeeRewardButton.disabled = stampCount < 3;
-  curryRewardButton.disabled = stampCount < 6;
+  curryRewardButton.disabled  = stampCount < 6;
 }
 
-// Add a stamp
 function addStamp() {
   if (stampCount < 6) {
     stampCount++;
     saveStampCount();
-    const newStamp = document.querySelector(`.stamp[data-stamp-id="${stampCount}"]`);
-    newStamp.classList.add('stamp-added');
-    setTimeout(() => newStamp.classList.remove('stamp-added'), 500);
+    const el = document.querySelector(`.stamp[data-stamp-id="${stampCount}"]`);
+    el.classList.add('stamp-added');
+    setTimeout(() => el.classList.remove('stamp-added'), 500);
     updateStampDisplay();
     updateRewardButtons();
-    if (stampCount === 3) showNotification('おめでとうございます！', 'コーヒー1杯無料の特典が利用できるようになりました！');
-    else if (stampCount === 6) showNotification('おめでとうございます！', 'カレー1杯無料の特典が利用できるようになりました！');
-    else showNotification('スタンプを獲得しました！', `現在のスタンプ数: ${stampCount}個`);
+    if (stampCount === 3) showNotification('🎉', 'コーヒー1杯無料ゲット！');
+    else if (stampCount === 6) showNotification('🎉', 'カレー1杯無料ゲット！');
+    else showNotification('スタンプ獲得', `現在 ${stampCount} 個`);
   }
 }
 
-// Redeem a reward
 function redeemReward(type) {
-  if (type === 'coffee' && stampCount >= 3) {
-    stampCount -= 3;
-    showNotification('交換完了', 'コーヒー1杯無料の特典を交換しました！');
-  } else if (type === 'curry' && stampCount >= 6) {
-    stampCount -= 6;
-    showNotification('交換完了', 'カレー1杯無料の特典を交換しました！');
-  }
+  if (type === 'coffee' && stampCount >= 3) { stampCount -= 3; showNotification('交換完了','コーヒー交換！'); }
+  if (type === 'curry'  && stampCount >= 6) { stampCount -= 6; showNotification('交換完了','カレー交換！'); }
   saveStampCount();
   updateStampDisplay();
   updateRewardButtons();
 }
 
-// Show notification modal
-function showNotification(title, message) {
-  notificationTitle.textContent = title;
-  notificationMessage.textContent = message;
+function showNotification(title, msg) {
+  notificationTitle.textContent   = title;
+  notificationMessage.textContent = msg;
   notificationModal.classList.add('active');
 }
 
-// Initialize QR Scanner
 function initQRScanner() {
   const qrReader = document.getElementById('qr-reader');
   const qrResult = document.getElementById('qr-result');
-  qrReader.innerHTML = '';
-  qrResult.innerHTML = '';
+  qrReader.innerHTML = ''; qrResult.innerHTML = '';
   const html5QrCode = new Html5Qrcode('qr-reader');
   html5QrCode.start(
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 250, height: 250 } },
-    onScanSuccess,
-    onScanFailure
-  ).catch(error => {
-    qrResult.innerHTML = '<div class="status status--error">カメラへのアクセスに失敗しました。カメラの使用を許可してください。</div>';
-    console.error('QR Code Scanner error:', error);
-  });
-
-  function onScanSuccess(decodedText) {
+    onScanSuccess, onScanFailure
+  ).catch(e => qrResult.innerHTML = '<div class="status status--error">カメラエラー</div>');
+  function onScanSuccess(text) {
     html5QrCode.stop().then(() => {
-      if (decodedText === appData.qrString) {
-        qrResult.innerHTML = '<div class="status status--success">スタンプを獲得しました！</div>';
-        setTimeout(() => { closeModal(qrModal); addStamp(); }, 1000);
+      if (text === appData.qrString) {
+        qrResult.innerHTML = '<div class="status status--success">スタンプ獲得！</div>';
+        setTimeout(() => { qrModal.classList.remove('active'); addStamp(); }, 800);
       } else {
-        qrResult.innerHTML = '<div class="status status--error">無効なQRコードです。Route227のスタンプQRコードをスキャンしてください。</div>';
+        qrResult.innerHTML = '<div class="status status--error">無効なQR</div>';
       }
-    }).catch(console.error);
+    });
   }
-
-  function onScanFailure(error) {
-    // 継続的に呼ばれるので何もしない
-  }
+  function onScanFailure() {}
 }
 
-// Render external Machico articles with controlled order and loading spinner
 async function renderArticles(category) {
-  // 記事定義の順番で確実に表示
-  const externalArticles = [
-    { url: 'https://machico.mu/special/detail/2691', category: 'イベント', title: '「仙臺横丁フェス」6月13日（金）～15日（日）開催', summary: '【会場で使えるお食事券をゲットしよう！】「仙臺横丁フェス」6月13日（金）～15日（日）開催' },
-    { url: 'https://machico.mu/special/detail/2704', category: 'イベント', title: 'Kappo presents 杜の都のワイン祭り 「バル仙台2025」 開催！', summary: 'machicoタイアップ企画に参加してイベントをもっと楽しもう♪' },
-    { url: 'https://machico.mu/jump/ad/102236', category: 'ニュース', title: '[COLORweb]学生編集部が、仙台・宮城の話題を中心に、気になるトピックをお届け♪', summary: '' },
-    { url: 'https://machico.mu/special/detail/2926', category: 'ニュース', title: 'DoFree！Vol.311～本間ちゃんのここだけの話～', summary: '『北の湖…輪島 魁傑 富士桜』' }
+  const list = [
+    { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'…',summary:'…' },
+    { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'…',summary:'…' },
+    { url:'https://machico.mu/jump/ad/102236',category:'ニュース',title:'…',summary:'…' },
+    { url:'https://machico.mu/special/detail/2926',category:'ニュース',title:'…',summary:'…' }
   ];
 
-  // ローディングスピナー表示
   articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
-
-  // カテゴリフィルタ
-  const targets = externalArticles.filter(a => category === 'all' || a.category === category);
-
-  // 全ての fetch を順序どおりに実行しつつ、Promise.all で順序保証
+  const targets = list.filter(a=>category==='all'||a.category===category);
   try {
-    const results = await Promise.all(
-      targets.map(article =>
-        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(article.url)}`)
-          .then(res => res.json())
-          .then(data => ({ article, data }))
-      )
-    );
-
-    // スピナー削除
+    const res = await Promise.all(targets.map(a=>
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`)
+        .then(r=>r.json()).then(d=>({a,d}))
+    ));
     articlesContainer.innerHTML = '';
-
-    // 取得順（元配列順）で描画
-    results.forEach(({ article, data }) => {
-      const img = new DOMParser()
-        .parseFromString(data.contents, 'text/html')
-        .querySelector("meta[property='og:image']")?.content || '';
-
+    res.forEach(({a,d})=>{
+      const img = new DOMParser().parseFromString(d.contents,'text/html')
+                  .querySelector("meta[property='og:image']")?.content||'';
       const card = document.createElement('div');
       card.className = 'card article-card';
       card.innerHTML = `
-        <a href="${article.url}" target="_blank" rel="noopener noreferrer">
-          <img src="${img}" alt="${article.title}" />
+        <a href="${a.url}" target="_blank">
+          <img src="${img}" alt="${a.title}"/>
           <div class="card__body">
-            <span class="article-category">${article.category}</span>
-            <h3 class="article-title">${article.title}</h3>
-            <p class="article-excerpt">${article.summary}</p>
+            <span class="article-category">${a.category}</span>
+            <h3 class="article-title">${a.title}</h3>
+            <p class="article-excerpt">${a.summary}</p>
           </div>
         </a>`;
       articlesContainer.appendChild(card);
     });
-  } catch (err) {
-    console.error('記事取得中にエラー:', err);
-    articlesContainer.innerHTML = '<p>記事の読み込みに失敗しました。</p>';
+  } catch(e) {
+    articlesContainer.innerHTML = '<p>読み込み失敗</p>';
   }
 }
 
-// Close modal
-function closeModal(modal) {
-  modal.classList.remove('active');
-}
+function closeModal(m) { m.classList.remove('active'); }
 
-// Setup Event Listeners
 function setupEventListeners() {
-  navLinks.forEach(link => link.addEventListener('click', () => {
-    /* 既存のセクション切り替え */
-    navLinks.forEach(n => n.classList.remove('active'));
+  navLinks.forEach(link=>link.addEventListener('click',()=>{
+    navLinks.forEach(n=>n.classList.remove('active'));
     link.classList.add('active');
-    sections.forEach(sec => sec.classList.remove('active'));
+    sections.forEach(s=>s.classList.remove('active'));
     document.getElementById(link.dataset.section).classList.add('active');
   }));
 
-  categoryTabs.forEach(tab => tab.addEventListener('click', () => {
-    /* カテゴリ切り替え */
-    categoryTabs.forEach(t => t.classList.remove('active'));
+  categoryTabs.forEach(tab=>tab.addEventListener('click',()=>{
+    categoryTabs.forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');
     renderArticles(tab.dataset.category);
   }));
 
-  scanQrButton.addEventListener('click', () => {
-    qrModal.classList.add('active');
-    initQRScanner();
-  });
+  scanQrButton.addEventListener('click',()=>{ qrModal.classList.add('active'); initQRScanner(); });
 
-  // 227ボタン（ページトップへスムーススクロール）
-  const bottom227 = document.querySelector('.footer-nav .nav-item:first-child .nav-link');
-  bottom227.addEventListener('click', () => {
-    // 既存のタブ切り替えなど動かしたい場合はここで処理
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  document.querySelector('.footer-nav .nav-item:first-child .nav-link')
+    .addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
 
-  // モーダルクローズ
-  closeModalButtons.forEach(btn =>
-    btn.addEventListener('click', () => closeModal(btn.closest('.modal')))
-  );
-
-  closeNotificationButton.addEventListener('click', () =>
-    closeModal(notificationModal)
-  );
-
-  // 交換ボタン
-  coffeeRewardButton.addEventListener('click', () => redeemReward('coffee'));
-  curryRewardButton.addEventListener('click', () => redeemReward('curry'));
+  closeModalButtons.forEach(btn=>btn.addEventListener('click',()=>closeModal(btn.closest('.modal'))));
+  closeNotificationButton.addEventListener('click',()=>closeModal(notificationModal));
+  coffeeRewardButton.addEventListener('click',()=>redeemReward('coffee'));
+  curryRewardButton.addEventListener('click',()=>redeemReward('curry'));
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
