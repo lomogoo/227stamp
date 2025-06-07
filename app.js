@@ -29,6 +29,7 @@ let deviceId = localStorage.getItem('deviceId') || (() => {
 let stampCount  = 0;
 let html5QrCode = null;
 let eventBound  = false;
+let globalUID   = null;
 
 /* 3) アプリ固有データ */
 const appData = {
@@ -87,14 +88,9 @@ async function syncStampFromDB(uid = null) {
   /* ▼▼ ここを修正 ▼▼ */
   if (error && !data) {
     // ― 新規ユーザー作成 ―
-    const { error: insertError } = await db
-      .from('users')
-      .insert([{
-      supabase_uid: uid,         // ← 追加
-      device_id: deviceId,
-      stamp_count: stampCount
-  }]);
-
+    const row = { device_id: deviceId, stamp_count: stampCount };
+    if (uid) row.supabase_uid = uid;
+    const { error: insertError } = await db.from('users').insert([row]);
     if (insertError) {
       console.error('INSERT error', insertError);
     }
@@ -281,11 +277,11 @@ async function initApp() {
   globalUID = session?.user?.id || null;
 
   /* 🆕 ユーザーと端末の upsert */
-  if (supaUID) {
+  if (globalUID) {
     await db
       .from('users')
-      .upsert({ supabase_uid: supaUID, device_id: deviceId, stamp_count })
-      .eq('supabase_uid', supaUID)
+      .upsert({ supabase_uid: globalUID, device_id: deviceId, stamp_count })
+      .eq('supabase_uid', globalUID)
       .select();
   }
 
