@@ -822,8 +822,18 @@ body {
 
 .article-card {
   border-radius: var(--radius-lg);
+  background-color: #fff;
   overflow: hidden;
-  transition: transform var(--duration-normal) var(--ease-standard);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin: var(--space-12) var(--space-16);
+  display: flex;
+  flex-direction: column;
+}
+
+.article-card img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
 .article-card:hover {
@@ -852,6 +862,36 @@ body {
 .article-excerpt {
   color: var(--color-text-secondary);
   margin-bottom: 0;
+}
+
+.article-card .article-content {
+  padding: var(--space-12);
+}
+
+.article-card .article-category {
+  background-color: var(--color-primary);
+  color: white;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: var(--space-8);
+}
+
+.article-card .article-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 4px;
+}
+
+.article-card .article-summary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  max-height: 3em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Stamp Card */
