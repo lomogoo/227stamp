@@ -32,12 +32,12 @@ db.auth.onAuthStateChange((event, session) => {
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value;
-  const { error } = await db.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: 'https://lomogoo.github.io/227stamp/'
-   }
- });
+  const { data, error } = await db.auth.signInWithOtp({
+  email,
+  options: { emailRedirectTo: 'https://lomogoo.github.io/227stamp/' }
+});
+
+console.log('[Auth] signInWithOtp →', { data, error });
   
   const msg = document.getElementById('login-message');
   if (error) {
