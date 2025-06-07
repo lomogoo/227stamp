@@ -669,6 +669,7 @@ select.form-control {
   text-align: center;
 }
 
+/* Footer Navigation */
 .footer-nav {
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
@@ -711,6 +712,13 @@ select.form-control {
   width: 100%;
   height: 100%;
   transition: all var(--duration-normal) var(--ease-standard);
+  background-color: transparent;
+  transform: scale(1);
+}
+
+.footer-nav .nav-link:active {
+  transform: scale(0.92);
+  transition: transform 0.1s ease-in-out;
 }
 
 .footer-nav .nav-link span {
@@ -726,6 +734,13 @@ select.form-control {
 .footer-nav .nav-link.active span {
   font-size: var(--font-size-xl);
 }
+
+html,
+body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
 /* Body bottom padding to avoid overlap */
 body {
   padding-bottom: 60px;
