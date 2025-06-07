@@ -1,150 +1,346 @@
-// app.js
+// Route227Cafe Application
 
-document.addEventListener(‘DOMContentLoaded’, () => {
-const categories = [‘ALL’, ‘イベント’, ‘お店’, ‘ニュース’];
-let currentCategoryIndex = 0;
+// Data
+const appData = {
+  articles: [
+    {
+      id: 1,
+      title: "仙台の新しいカフェ文化",
+      category: "お店",
+      date: "2025-06-05",
+      excerpt: "仙台市内で注目を集める新しいカフェスタイルについて紹介します。",
+      content: "仙台の街角に新しいカフェ文化が根付いています..."
+    },
+    {
+      id: 2,
+      title: "Route227キッチンカー始動",
+      category: "ニュース",
+      date: "2025-06-04",
+      excerpt: "Route227がキッチンカーでの営業を開始しました。",
+      content: "東北227市町村の魅力を乗せたキッチンカーが..."
+    },
+    {
+      id: 3,
+      title: "夏のカレーフェスティバル",
+      category: "イベント",
+      date: "2025-06-03",
+      excerpt: "7月に開催予定の夏のカレーフェスティバルの詳細が決定しました。",
+      content: "今年の夏も盛大にカレーフェスティバルを開催..."
+    },
+    {
+      id: 4,
+      title: "東北食材の魅力",
+      category: "お店",
+      date: "2025-06-02",
+      excerpt: "Route227で使用している東北各地の食材について。",
+      content: "東北6県の豊かな食材を使用したメニュー..."
+    },
+    {
+      id: 5,
+      title: "地域コミュニティとの連携",
+      category: "ニュース",
+      date: "2025-06-01",
+      excerpt: "地域コミュニティとの新しい取り組みを発表。",
+      content: "地域の皆様との連携を深めるプロジェクト..."
+    },
+    {
+      id: 6,
+      title: "ワークショップ開催のお知らせ",
+      category: "イベント",
+      date: "2025-05-30",
+      excerpt: "6月に開催されるワークショップの参加者を募集中です。",
+      content: "東北の文化を体験できるワークショップ..."
+    }
+  ],
+  rewards: [
+    {
+      type: "coffee",
+      stampsRequired: 3,
+      name: "コーヒー1杯無料"
+    },
+    {
+      type: "curry",
+      stampsRequired: 6,
+      name: "カレー1杯無料"
+    }
+  ],
+  qrString: "ROUTE227_STAMP_2025"
+};
 
-// スタンプデータ初期化
-if (localStorage.getItem(‘totalStamps’) === null) {
-localStorage.setItem(‘totalStamps’, ‘0’);
-localStorage.setItem(‘currentStamps’, ‘0’);
-localStorage.setItem(‘usedCount’, ‘0’);
+// DOM Elements
+const navLinks = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('.section');
+const categoryTabs = document.querySelectorAll('.category-tab');
+const articlesContainer = document.getElementById('articles-container');
+const scanQrButton = document.getElementById('scan-qr');
+const qrModal = document.getElementById('qr-modal');
+const notificationModal = document.getElementById('notification-modal');
+const closeModalButtons = document.querySelectorAll('.close-modal');
+const closeNotificationButton = document.querySelector('.close-notification');
+const coffeeRewardButton = document.getElementById('coffee-reward');
+const curryRewardButton = document.getElementById('curry-reward');
+const stamps = document.querySelectorAll('.stamp');
+const notificationTitle = document.getElementById('notification-title');
+const notificationMessage = document.getElementById('notification-message');
+
+// Stamp Card Management
+let stampCount = 0;
+
+// Initialize the application
+function initApp() {
+  loadStampCount();
+  renderArticles('all');
+  updateStampDisplay();
+  updateRewardButtons();
+  setupEventListeners();
 }
-let totalStamps = parseInt(localStorage.getItem(‘totalStamps’), 10);
-let currentStamps = parseInt(localStorage.getItem(‘currentStamps’), 10);
 
-const categoryTabs = document.getElementById(‘categoryTabs’);
-const articlesContainer = document.getElementById(‘articles’);
-const currentStampsEl = document.getElementById(‘currentStamps’);
-const totalStampsEl = document.getElementById(‘totalStamps’);
-const stampCard = document.getElementById(‘stampCard’);
-const menu227 = document.getElementById(‘menu-227’);
-const menuFoodtruck = document.getElementById(‘menu-foodtruck’);
-const qrScanner = document.getElementById(‘qrScanner’);
-const scannerPreview = document.getElementById(‘scannerPreview’);
-
-// 交換ボタン生成
-const coffeeBtn = document.createElement(‘button’);
-coffeeBtn.id = ‘coffeeExchange’;
-coffeeBtn.textContent = ‘コーヒーと交換’;
-coffeeBtn.disabled = true;
-const curryBtn = document.createElement(‘button’);
-curryBtn.id = ‘curryExchange’;
-curryBtn.textContent = ‘カレーと交換’;
-curryBtn.disabled = true;
-stampCard.appendChild(coffeeBtn);
-stampCard.appendChild(curryBtn);
-
-// 記事データ一覧
-const articles = [
-{ title: ‘Bang BAR SENDAI 第3弾開催’, category: ‘イベント’, image: ‘🎉’, url: ‘https://machico.mu/special/detail/2727’ },
-{ title: ‘仙臺横丁フェス’,           category: ‘イベント’, image: ‘🍻’, url: ‘https://machico.mu/special/detail/2691’ },
-{ title: ‘バル仙台2025’,           category: ‘イベント’, image: ‘🍷’, url: ‘https://machico.mu/special/detail/2704’ },
-{ title: ‘TOHOKU DE＆I FORUM 2025’, category: ‘イベント’, image: ‘🎤’, url: ‘https://machico.mu/special/detail/2924’ },
-{ title: ‘PIZZA＆WINE ESOLA’,      category: ‘お店’,    image: ‘🍕’, url: ‘https://machico.mu/gourmet/detail/2003831’ }
-];
-
-// 記事描画
-function renderArticles() {
-articlesContainer.innerHTML = ‘’;
-const selected = categories[currentCategoryIndex];
-articles
-.filter(a => selected === ‘ALL’ || a.category === selected)
-.forEach(a => {
-const div = document.createElement(‘div’);
-div.className = ‘article’;
-div.innerHTML = <div class="article-title"><a href="${a.url}" target="_blank">${a.title}</a></div> <div class="article-image">${a.image}</div>;
-articlesContainer.appendChild(div);
-});
+// Load stamp count from localStorage
+function loadStampCount() {
+  const savedStamps = localStorage.getItem('route227_stamps');
+  if (savedStamps !== null) {
+    stampCount = parseInt(savedStamps, 10);
+  }
 }
 
-// 交換ボタン活性制御
-function updateExchangeButtons() {
-coffeeBtn.disabled = currentStamps < 3;
-curryBtn.disabled = currentStamps < 6;
+// Save stamp count to localStorage
+function saveStampCount() {
+  localStorage.setItem('route227_stamps', stampCount.toString());
 }
 
-// スタンプ表示更新
+// Update the visual display of stamps
 function updateStampDisplay() {
-currentStampsEl.textContent = currentStamps;
-totalStampsEl.textContent = totalStamps;
-updateExchangeButtons();
+  stamps.forEach((stamp, index) => {
+    if (index < stampCount) {
+      stamp.classList.add('active');
+    } else {
+      stamp.classList.remove('active');
+    }
+  });
 }
 
-// 交換ボタン処理
-coffeeBtn.addEventListener(‘click’, () => {
-if (currentStamps >= 3) {
-currentStamps -= 3;
-totalStamps -= 3;
-localStorage.setItem(‘currentStamps’, currentStamps);
-localStorage.setItem(‘totalStamps’, totalStamps);
-alert(‘コーヒー1杯と交換しました！’);
-updateStampDisplay();
-}
-});
-curryBtn.addEventListener(‘click’, () => {
-if (currentStamps >= 6) {
-currentStamps -= 6;
-totalStamps -= 6;
-localStorage.setItem(‘currentStamps’, currentStamps);
-localStorage.setItem(‘totalStamps’, totalStamps);
-alert(‘カレー1杯と交換しました！’);
-updateStampDisplay();
-}
-});
-
-// QRスキャン開始
-function startScanner() {
-qrScanner.style.display = ‘flex’;
-const codeReader = new ZXing.BrowserQRCodeReader();
-codeReader.decodeFromVideoDevice(null, scannerPreview, (result, err) => {
-if (result) {
-if (result.text === ‘ROUTE227_STAMP_2025’ && currentStamps < 6) {
-totalStamps++;
-currentStamps++;
-localStorage.setItem(‘totalStamps’, totalStamps);
-localStorage.setItem(‘currentStamps’, currentStamps);
-updateStampDisplay();
-}
-codeReader.reset();
-qrScanner.style.display = ‘none’;
-}
-});
+// Update reward buttons based on stamp count
+function updateRewardButtons() {
+  coffeeRewardButton.disabled = stampCount < 3;
+  curryRewardButton.disabled = stampCount < 6;
 }
 
-// セクション切り替え
-function switchSection(section) {
-if (section === ‘227’) {
-categoryTabs.style.display = ‘flex’;
-menu227.classList.add(‘active’);
-menuFoodtruck.classList.remove(‘active’);
-renderArticles();
-} else {
-categoryTabs.style.display = ‘none’;
-menuFoodtruck.classList.add(‘active’);
-menu227.classList.remove(‘active’);
-articlesContainer.innerHTML = ‘FoodTruck情報はこちら’;
+// Add a stamp
+function addStamp() {
+  if (stampCount < 6) {
+    stampCount++;
+    saveStampCount();
+    
+    // Animate the newly added stamp
+    const newStamp = document.querySelector(`.stamp[data-stamp-id="${stampCount}"]`);
+    newStamp.classList.add('stamp-added');
+    
+    // Remove animation class after animation completes
+    setTimeout(() => {
+      newStamp.classList.remove('stamp-added');
+    }, 500);
+    
+    updateStampDisplay();
+    updateRewardButtons();
+    
+    // Show notification for rewards eligibility
+    if (stampCount === 3) {
+      showNotification('おめでとうございます！', 'コーヒー1杯無料の特典が利用できるようになりました！');
+    } else if (stampCount === 6) {
+      showNotification('おめでとうございます！', 'カレー1杯無料の特典が利用できるようになりました！');
+    } else {
+      showNotification('スタンプを獲得しました！', `現在のスタンプ数: ${stampCount}個`);
+    }
+  }
 }
+
+// Redeem a reward
+function redeemReward(type) {
+  if (type === 'coffee' && stampCount >= 3) {
+    stampCount -= 3;
+    showNotification('交換完了', 'コーヒー1杯無料の特典を交換しました！');
+  } else if (type === 'curry' && stampCount >= 6) {
+    stampCount -= 6;
+    showNotification('交換完了', 'カレー1杯無料の特典を交換しました！');
+  }
+  
+  saveStampCount();
+  updateStampDisplay();
+  updateRewardButtons();
 }
 
-// タブクリック
-categoryTabs.addEventListener(‘click’, e => {
-if (e.target.classList.contains(‘tab’)) {
-Array.from(categoryTabs.children).forEach(t => t.classList.remove(‘active’));
-e.target.classList.add(‘active’);
-currentCategoryIndex = categories.indexOf(e.target.dataset.category);
-renderArticles();
+// Show notification modal
+function showNotification(title, message) {
+  notificationTitle.textContent = title;
+  notificationMessage.textContent = message;
+  notificationModal.classList.add('active');
 }
-});
 
-// メニュークリック
-menu227.addEventListener(‘click’, () => switchSection(‘227’));
-menuFoodtruck.addEventListener(‘click’, () => switchSection(‘FoodTruck’));
+// Initialize QR Scanner
+function initQRScanner() {
+  const qrReader = document.getElementById('qr-reader');
+  const qrResult = document.getElementById('qr-result');
+  
+  // Clear previous content
+  qrReader.innerHTML = '';
+  qrResult.innerHTML = '';
+  
+  const html5QrCode = new Html5Qrcode("qr-reader");
+  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    onScanSuccess,
+    onScanFailure
+  ).catch(error => {
+    qrResult.innerHTML = `
+      <div class="status status--error">
+        カメラへのアクセスに失敗しました。カメラの使用を許可してください。
+      </div>
+    `;
+    console.error("QR Code Scanner error:", error);
+  });
+  
+  // Success callback
+  function onScanSuccess(decodedText) {
+    html5QrCode.stop().then(() => {
+      if (decodedText === appData.qrString) {
+        qrResult.innerHTML = `
+          <div class="status status--success">
+            スタンプを獲得しました！
+          </div>
+        `;
+        
+        // Add stamp and close modal after a short delay
+        setTimeout(() => {
+          closeModal(qrModal);
+          addStamp();
+        }, 1000);
+      } else {
+        qrResult.innerHTML = `
+          <div class="status status--error">
+            無効なQRコードです。Route227のスタンプQRコードをスキャンしてください。
+          </div>
+        `;
+      }
+    }).catch(error => {
+      console.error("Failed to stop QR Code scanner:", error);
+    });
+  }
+  
+  // Error callback
+  function onScanFailure(error) {
+    // This is called continuously, so we don't need to do anything here
+    // console.error("QR Code scanning failed:", error);
+  }
+}
 
-// 初期表示
-updateStampDisplay();
-switchSection(‘227’);
+// Render articles based on selected category
+function renderArticles(category) {
+  articlesContainer.innerHTML = '';
+  
+  const filteredArticles = category === 'all' 
+    ? appData.articles 
+    : appData.articles.filter(article => article.category === category);
+  
+  filteredArticles.forEach(article => {
+    const articleElement = document.createElement('div');
+    articleElement.className = 'card article-card';
+    
+    const formattedDate = formatDate(article.date);
+    
+    articleElement.innerHTML = `
+      <div class="card__body">
+        <span class="article-category">${article.category}</span>
+        <h3 class="article-title">${article.title}</h3>
+        <div class="article-date">${formattedDate}</div>
+        <p class="article-excerpt">${article.excerpt}</p>
+      </div>
+    `;
+    
+    articlesContainer.appendChild(articleElement);
+  });
+}
 
-// スタンプカードクリックでQR
-stampCard.addEventListener(‘click’, startScanner);
-});
+// Format date to Japanese style
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  
+  return `${year}年${month}月${day}日`;
+}
+
+// Close modal
+function closeModal(modal) {
+  modal.classList.remove('active');
+}
+
+// Setup Event Listeners
+function setupEventListeners() {
+  // Navigation tabs
+  navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      const targetSection = link.getAttribute('data-section');
+      
+      // Update active nav link
+      navLinks.forEach(navLink => navLink.classList.remove('active'));
+      link.classList.add('active');
+      
+      // Show target section
+      sections.forEach(section => {
+        section.classList.remove('active');
+        if (section.id === targetSection) {
+          section.classList.add('active');
+        }
+      });
+    });
+  });
+  
+  // Category tabs
+  categoryTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const category = tab.getAttribute('data-category');
+      
+      // Update active category tab
+      categoryTabs.forEach(categoryTab => categoryTab.classList.remove('active'));
+      tab.classList.add('active');
+      
+      // Render articles for selected category
+      renderArticles(category);
+    });
+  });
+  
+  // QR Scanner button
+  scanQrButton.addEventListener('click', () => {
+    qrModal.classList.add('active');
+    initQRScanner();
+  });
+  
+  // Close modal buttons
+  closeModalButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const modal = button.closest('.modal');
+      closeModal(modal);
+    });
+  });
+  
+  // Close notification button
+  closeNotificationButton.addEventListener('click', () => {
+    closeModal(notificationModal);
+  });
+  
+  // Reward redemption buttons
+  coffeeRewardButton.addEventListener('click', () => {
+    redeemReward('coffee');
+  });
+  
+  curryRewardButton.addEventListener('click', () => {
+    redeemReward('curry');
+  });
+}
+
+// Initialize the app when DOM is loaded
+document.addEventListener('DOMContentLoaded', initApp);
