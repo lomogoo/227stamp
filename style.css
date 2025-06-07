@@ -945,15 +945,29 @@ body {
 }
 
 .stamp.active::before {
-  content: "✓";
-  font-size: var(--font-size-3xl);
-  color: var(--color-primary);
-  position: absolute;
+  content: none;
 }
 
 .stamp.active {
   background-color: #fde8db; /* 薄いオレンジ背景 */
   border-color: var(--color-primary); /* 枠も強調する場合 */
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 1・2・4・5 のスタンプに使う画像 */
+.stamp[data-stamp-id="1"].active,
+.stamp[data-stamp-id="2"].active,
+.stamp[data-stamp-id="4"].active,
+.stamp[data-stamp-id="5"].active {
+  background-image: url('/assets/logo.png');
+}
+
+/* 3・6 のスタンプに使う画像 */
+.stamp[data-stamp-id="3"].active,
+.stamp[data-stamp-id="6"].active {
+  background-image: url('/assets/truck.png');
 }
 
 .rewards-container {
