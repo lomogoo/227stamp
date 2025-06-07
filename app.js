@@ -58,7 +58,7 @@ let globalUID   = null;
 async function fetchOrCreateUserRow(uid) {
   try {
     // 1) supabase_uid だけで取得（deviceId 無視）
-    const { data, error, status } = await db
+    const { data, error } = await db
       .from('users')
       .select('stamp_count')
       .eq('supabase_uid', uid)
@@ -126,7 +126,7 @@ async function syncStampFromDB(uid) {
     .from('users')
     .select('stamp_count')
     .eq('supabase_uid', uid)       // ★ UID だけ
-    .single();
+    .maybeSingle();
 
   let remote = 0;
 
