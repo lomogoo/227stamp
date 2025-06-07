@@ -669,12 +669,49 @@ select.form-control {
   text-align: center;
 }
 
-.main-nav {
+/* Footer Navigation */
+.footer-nav {
   background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
+  border-top: 1px solid var(--color-border);
+  position: fixed;
+  bottom: 0;
+  width: 100%;
   z-index: 10;
+}
+
+.footer-nav .nav-tabs {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-nav .nav-item {
+  flex: 1;
+}
+
+.footer-nav .nav-link {
+  display: block;
+  width: 100%;
+  padding: var(--space-12) var(--space-8);
+  text-align: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  border-top: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.footer-nav .nav-link.active {
+  color: var(--color-primary);
+  border-top-color: var(--color-primary);
+}
+
+/* Body bottom padding to avoid overlap */
+body {
+  padding-bottom: 60px; /* navの高さ分スペース確保 */
 }
 
 .nav-tabs {
