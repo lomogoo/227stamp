@@ -61,18 +61,25 @@ function loadStampCount() {
 
 // Supabase UPDATE
 async function updateStampCount(newCount) {
+  const { data: { session } } = await db.auth.getSession();
+  const uid = session?.user?.id || null;
+
   const { error } = await db
     .from('users')
     .update({ stamp_count: newCount, updated_at: new Date().toISOString() })
-    .eq('device_id', deviceId);
+    .match(uid ? { supabase_uid: uid, device_id: deviceId }
+               : { device_id: deviceId });
   if (error) console.error('スタンプ更新エラー:', error);
 }
 
-async function syncStampFromDB() {
+async function syncStampFromDB(uid = null) {
+  const match = uid ? { supabase_uid: uid, device_id: deviceId }
+                    : { device_id: deviceId };
+
   const { data, error } = await db
     .from('users')
     .select('stamp_count')
-    .eq('device_id', deviceId)
+    .match(match)
     .single();
 
   let remote = 0;
