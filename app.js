@@ -140,10 +140,10 @@ function renderArticles(category) {
   articlesContainer.innerHTML = '';
 
   const externalArticles = [
-    { url: 'https://machico.mu/special/detail/2691', category: 'イベント', title: '仙台の夏祭りとカフェ巡り', summary: '仙台市内で開催される夏祭りに合わせて、おすすめのカフェを紹介します。' },
-    { url: 'https://machico.mu/special/detail/2704', category: 'イベント', title: '七夕コンテスト特集', summary: '七夕にまつわるイベント情報と見どころをまとめました。' },
-    { url: 'https://machico.mu/jump/ad/102236', category: 'ニュース', title: '地域限定割引キャンペーン', summary: '地元カフェで使える限定割引クーポン情報をお届けします。' },
-    { url: 'https://machico.mu/special/detail/2926', category: 'ニュース', title: '新店舗オープン速報', summary: '東北地方に新しくオープンした飲食店情報を随時更新中。' }
+    { url: 'https://machico.mu/special/detail/2691', category: 'イベント', title: '「仙臺横丁フェス」6月13日（金）～15日（日）開催', summary: '【会場で使えるお食事券をゲットしよう！】「仙臺横丁フェス」6月13日（金）～15日（日）開催' },
+    { url: 'https://machico.mu/special/detail/2704', category: 'イベント', title: 'Kappo presents 杜の都のワイン祭り 「バル仙台2025」 開催！', summary: 'machicoタイアップ企画に参加してイベントをもっと楽しもう♪' },
+    { url: 'https://machico.mu/jump/ad/102236', category: 'ニュース', title: '[COLORweb]学生編集部が、仙台・宮城の話題を中心に、気になるトピックをお届け♪', summary: '' },
+    { url: 'https://machico.mu/special/detail/2926', category: 'ニュース', title: 'DoFree！Vol.311～本間ちゃんのここだけの話～', summary: '『北の湖…輪島 魁傑 富士桜』' }
   ];
 
   externalArticles
