@@ -288,14 +288,18 @@ function setupEventListeners() {
 
       if (link.dataset.section === 'foodtruck-section') {
         if (!globalUID) {
-    // 未ログインならログインモーダルを表示して処理を中断
-          const m = document.getElementById('login-modal');
-          if (m) m.classList.add('active');      // 要素が無いときは何もしない
+          document.getElementById('login-modal')?.classList.add('active');
           return;
         }
-        
-  // ログイン済みなら通常どおりカードを同期
-        await syncStampFromDB(globalUID);
+    // ---- ① スピナー出す
+        const s = document.getElementById('stamp-spinner');
+        s?.classList.remove('hidden');
+
+        try {
+          await syncStampFromDB(globalUID);   // ★←必ず DB 最新を取得
+        } finally {
+          s?.classList.add('hidden');        // ---- ④ スピナー隠す
+        }
         updateStampDisplay();
         updateRewardButtons();
       }
