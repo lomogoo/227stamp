@@ -19,12 +19,14 @@ db.auth.onAuthStateChange((_event, _session) => {
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value;
-  const { error } = await db.auth.signInWithOtp({ email,
-                                                 options: {
-                                                   emailRedirectTo: 'https://lomogoo.github.io/227stamp/'
-  }});
+  const { error } = await db.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: 'https://lomogoo.github.io/227stamp/'
+   }
+ });
   
-  const msg = ('login-message');
+  const msg = document.getElementById('login-message');
   if (error) {
     msg.textContent = '❌ メール送信に失敗しました';
     console.error(error);
