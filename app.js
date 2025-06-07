@@ -262,14 +262,33 @@ function setupEventListeners() {
   curryRewardButton .addEventListener('click', () => redeemReward('curry'));
 }
 
-/* ---------- 初期化 ---------- */
 async function initApp() {
   loadStampCount();
-  await syncStampFromDB();
+
+  /* 🆕 ログイン確認 */
+  const { data: { session } } = await db.auth.getSession();
+  const supaUID = session?.user?.id || null;
+
+  /* 🆕 ユーザーと端末の upsert */
+  if (supaUID) {
+    await db
+      .from('users')
+      .upsert({ supabase_uid: supaUID, device_id: deviceId, stamp_count })
+      .eq('supabase_uid', supaUID)
+      .select();
+  }
+
+  /* 通常の同期へ */
+  await syncStampFromDB(supaUID);
   updateStampDisplay();
   updateRewardButtons();
   renderArticles('all');
   setupEventListeners();
+
+  /* 🆕 UI 切替（ログインフォームを非表示に）*/
+  if (supaUID) {
+    document.getElementById('login-form').style.display = 'none';
+  }
 }
 
 /* ---------- 起動 ---------- */
