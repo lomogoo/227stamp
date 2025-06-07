@@ -6,6 +6,20 @@ const db = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k' // ★正しい anon 公開キー
 );
 
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const { error } = await db.auth.signInWithOtp({ email });
+
+  const msg = document.getElementById('login-message');
+  if (error) {
+    msg.textContent = '❌ メール送信に失敗しました';
+    console.error(error);
+  } else {
+    msg.textContent = '✅ メールを確認してください！';
+  }
+});
+
 /* 2) グローバル変数 */
 let deviceId = localStorage.getItem('deviceId') || (() => {
   const id = crypto.randomUUID();
