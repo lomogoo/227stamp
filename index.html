@@ -107,21 +107,28 @@
     </section>
 
     <!-- ✨ Login Modal -->
-<div class="modal" id="login-modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>メールでログイン</h3>
-      <button class="close-modal">&times;</button>
-    </div>
-    <form id="login-form" class="modal-body">
-      <input type="email" id="email" placeholder="you@example.com" required class="form-control" />
-      <button type="submit" class="btn btn--primary btn--full-width" style="margin-top:16px">
-        Magic Link を送信
-      </button>
-      <p id="login-message" style="margin-top:12px;text-align:center;font-size:12px"></p>
-    </form>
-  </div>
-</div>
+<!-- ↓これだけ残す（idはそのまま） -->
+<form id="login-form" class="modal-body">
+  <input
+    type="email"
+    id="email"
+    placeholder="you@example.com"
+    required
+    class="form-control"
+  />
+  <button
+    type="submit"
+    class="btn btn--primary btn--full-width"
+    style="margin-top:16px"
+  >
+    Magic Link を送信
+  </button>
+
+  <p
+    id="login-message"
+    style="margin-top:12px;text-align:center;font-size:12px"
+  ></p>
+</form>
   </main>
 
   <!-- Footer Navigation -->
