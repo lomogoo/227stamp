@@ -102,9 +102,8 @@ function loadStampCount() {
   if (saved !== null) stampCount = parseInt(saved, 10);
 }
 
-function saveStampCount() {
+async function saveStampCount() {
   localStorage.setItem('route227_stamps', stampCount.toString());
-  // DB にも更新
   const deviceId = localStorage.getItem('deviceId');
   if (deviceId) await updateStampCount(deviceId, stampCount);
 }
