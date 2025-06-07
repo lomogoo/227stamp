@@ -31,6 +31,19 @@ async function getOrCreateUser(deviceId) {
   return data;
 }
 
+// ✅ Supabaseから読み込んだstampCountだけを使う
+async function syncStampFromDB() {
+  const deviceId = localStorage.getItem('deviceId');
+  if (!deviceId) return;
+
+  const user = await getOrCreateUser(deviceId);
+  if (user) {
+    stampCount = user.stamp_count || 0;
+    updateStampDisplay();
+    updateRewardButtons();
+  }
+}
+
 async function updateStampCount(deviceId, newCount) {
   const { error } = await db
     .from('users')
@@ -93,7 +106,7 @@ function saveStampCount() {
   localStorage.setItem('route227_stamps', stampCount.toString());
   // DB にも更新
   const deviceId = localStorage.getItem('deviceId');
-  if (deviceId) updateStampCount(deviceId, stampCount);
+  if (deviceId) await updateStampCount(deviceId, stampCount);
 }
 
 function updateStampDisplay() {
@@ -108,7 +121,7 @@ function updateRewardButtons() {
 function addStamp() {
   if (stampCount < 6) {
     stampCount++;
-    saveStampCount();
+    await saveStampCount();
     const el = document.querySelector(`.stamp[data-stamp-id="${stampCount}"]`);
     el.classList.add('stamp-added');
     setTimeout(() => el.classList.remove('stamp-added'), 500);
