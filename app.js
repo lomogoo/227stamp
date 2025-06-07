@@ -1,4 +1,4 @@
-/* app.js – A+B 統合版（2025-06-07 完全動作確認済み） */
+/* app.js（2025-06-07-1410） */
 
 /* 1) Supabase 初期化 */
 const db = window.supabase.createClient(
@@ -54,9 +54,7 @@ async function updateStampCount(newCount) {
   if (error) console.error('スタンプ更新エラー:', error);
 }
 
-// Supabase SELECT / INSERT & 差分同期
 async function syncStampFromDB() {
-  // 1) ユーザーデータ取得
   const { data, error } = await db
     .from('users')
     .select('stamp_count')
@@ -64,18 +62,24 @@ async function syncStampFromDB() {
     .single();
 
   let remote = 0;
+
+  /* ▼▼ ここを修正 ▼▼ */
   if (error && !data) {
-    const { data: newUser } = await db
+    // ― 新規ユーザー作成 ―
+    const { error: insertError } = await db
       .from('users')
-      .insert([{ device_id: deviceId, stamp_count }])
-      .select('stamp_count')
-      .single();
-    remote = newUser?.stamp_count ?? 0;
+      .insert([{ device_id: deviceId, stamp_count: stampCount }]); // ← ★ここ！
+
+    if (insertError) {
+      console.error('INSERT error', insertError);
+    }
+    remote = stampCount;            // 406 を避けるため select は省略
   } else {
     remote = data?.stamp_count ?? 0;
   }
+  /* ▲▲ 修正ここまで ▲▲ */
 
-  // 2) 大きい方を採用
+  // 差分マージ
   if (remote > stampCount) {
     stampCount = remote;
     localStorage.setItem('route227_stamps', stampCount);
