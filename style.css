@@ -816,7 +816,7 @@ body {
   
   /* スクロールに合わせて上部に固定 */
   position: sticky;
-  top: calc(var(--space-16) + var(--font-size-2xl)); /* ヘッダー高さ分オフセット (お好みで調整) */
+  top: 56px
 }
 
 .category-tab {
