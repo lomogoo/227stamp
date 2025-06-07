@@ -69,13 +69,20 @@ async function updateStampCount(deviceId, newCount) {
 
 // ④ ページ遷移時にユーザーを読み込む
 document.getElementById('foodtruck-section').addEventListener('click', async () => {
-  const deviceId = localStorage.getItem('deviceId') || crypto.randomUUID();
-  localStorage.setItem('deviceId', deviceId);
-  const userData = await getOrCreateUser(deviceId);
-  stampCount = userData?.stamp_count || 0;
+  // deviceIdが存在しない場合のみ初期化処理を実行
+  let deviceId = localStorage.getItem('deviceId');
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem('deviceId', deviceId);
+    const userData = await getOrCreateUser(deviceId);
+    stampCount = userData?.stamp_count || 0;
+  }
+  
+  // 表示更新
   updateStampDisplay();
   updateRewardButtons();
 });
+
 
 // ⑤ 以降は既存のスタンプカード・QR・フィード処理
 
