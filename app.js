@@ -33,8 +33,11 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('email').value;
   const { data, error } = await db.auth.signInWithOtp({
-  email,
-  options: { emailRedirectTo: 'https://lomogoo.github.io/227stamp/' }
+  email: email.trim(), // 空白文字を除去
+  options: { 
+    emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
+    shouldCreateUser: true // 新規ユーザー作成を明示的に許可
+  }
 });
 
 console.log('[Auth] signInWithOtp →', { data, error });
