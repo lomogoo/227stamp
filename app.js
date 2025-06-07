@@ -6,15 +6,22 @@ const db = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k' // ★正しい anon 公開キー
 );
 
+// 認証状態変更リスナーを独立して設定
 db.auth.onAuthStateChange(async (event, session) => {
-  if (event !== 'SIGNED_IN') return;   // それ以外は無視
-
-  globalUID = session.user.id;
-  stampCount = await fetchOrCreateUserRow(globalUID);
-
-  updateStampDisplay();
-  updateRewardButtons();
-  document.getElementById('login-modal')?.classList.remove('active');
+  console.log('Auth state changed:', event, !!session);
+  
+  if (event === 'SIGNED_IN' && session) {
+    globalUID = session.user.id;
+    stampCount = await fetchOrCreateUserRow(globalUID);
+    updateStampDisplay();
+    updateRewardButtons();
+    document.getElementById('login-modal')?.classList.remove('active');
+  } else if (event === 'SIGNED_OUT') {
+    globalUID = null;
+    stampCount = 0;
+    updateStampDisplay();
+    updateRewardButtons();
+  }
 });
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -209,43 +216,61 @@ async function redeemReward(type) {
 
 /* ---------- フィード記事 ---------- */
 async function renderArticles(category) {
-  const list = [
-    { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
-    { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'Machico 2704',summary:'イベント記事' },
-    { url:'https://machico.mu/jump/ad/102236',      category:'ニュース', title:'Machico 102236',summary:'ニュース記事' },
-    { url:'https://machico.mu/special/detail/2926', category:'ニュース', title:'Machico 2926',summary:'ニュース記事' }
-  ];
+  try {
+    const list = [
+      { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
+      { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'Machico 2704',summary:'イベント記事' },
+      { url:'https://machico.mu/jump/ad/102236',      category:'ニュース', title:'Machico 102236',summary:'ニュース記事' },
+      { url:'https://machico.mu/special/detail/2926', category:'ニュース', title:'Machico 2926',summary:'ニュース記事' }
+    ];
 
-  const targets = list.filter(a => category === 'all' || a.category === category);
-  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
-
-  const cards = await Promise.all(targets.map(async a => {
-    try {
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`);
-      const d   = await res.json();
-      const doc = new DOMParser().parseFromString(d.contents, 'text/html');
-      return { ...a, img: doc.querySelector("meta[property='og:image']")?.content || 'assets/placeholder.jpg' };
-    } catch {
-      return { ...a, img: 'assets/placeholder.jpg' };
+    const targets = list.filter(a => category === 'all' || a.category === category);
+    
+    // コンテナが存在することを確認
+    const container = document.getElementById('articles-container');
+    if (!container) {
+      console.error('Articles container not found');
+      return;
     }
-  }));
+    
+    container.innerHTML = '<div class="loading-spinner"></div>';
 
-  articlesContainer.innerHTML = '';
-  cards.forEach(a => {
-    const div = document.createElement('div');
-    div.className = 'card article-card';
-    div.innerHTML = `
-      <a href="${a.url}" target="_blank" rel="noopener noreferrer">
-        <img src="${a.img}" alt="${a.title}のサムネイル">
-        <div class="card__body" aria-label="記事: ${a.title}">
-          <span class="article-category">${a.category}</span>
-          <h3 class="article-title">${a.title}</h3>
-          <p class="article-excerpt">${a.summary}</p>
-        </div>
-      </a>`;
-    articlesContainer.appendChild(div);
-  });
+    // 記事カードを生成
+    const cards = await Promise.all(targets.map(async a => {
+      try {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`);
+        const d = await res.json();
+        const doc = new DOMParser().parseFromString(d.contents, 'text/html');
+        return { ...a, img: doc.querySelector("meta[property='og:image']")?.content || 'assets/placeholder.jpg' };
+      } catch {
+        return { ...a, img: 'assets/placeholder.jpg' };
+      }
+    }));
+
+    container.innerHTML = '';
+    cards.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'card article-card';
+      div.innerHTML = `
+        <a href="${a.url}" target="_blank" rel="noopener noreferrer">
+          <img src="${a.img}" alt="${a.title}のサムネイル">
+          <div class="card__body" aria-label="記事: ${a.title}">
+            <span class="article-category">${a.category}</span>
+            <h3 class="article-title">${a.title}</h3>
+            <p class="article-excerpt">${a.summary}</p>
+          </div>
+        </a>`;
+      container.appendChild(div);
+    });
+  } catch (error) {
+    console.error('Render articles error:', error);
+    const container = document.getElementById('articles-container');
+    if (container) {
+      container.innerHTML = '<div class="status status--error">記事の読み込みに失敗しました</div>';
+    }
+  }
 }
+
 
 /* ---------- QR スキャナ ---------- */
 function initQRScanner() {
@@ -277,33 +302,41 @@ function setupEventListeners() {
   if (eventBound) return;
   eventBound = true;
 
-  /* nav */
+  // nav リスナー
   navLinks.forEach(link => {
-    link.addEventListener('click', async () => {
+    link.addEventListener('click', async (e) => {
+      e.preventDefault(); // デフォルト動作を防ぐ
+      
+      // アクティブ状態を更新
       navLinks.forEach(n => n.classList.remove('active'));
       link.classList.add('active');
       sections.forEach(s => s.classList.remove('active'));
-      const target = document.getElementById(link.dataset.section);
-      target.classList.add('active');
-
-      if (link.dataset.section === 'foodtruck-section') {
-        if (!globalUID) {
-    // 未ログインならログインモーダルを表示して処理を中断
-          const m = document.getElementById('login-modal');
-          if (m) m.classList.add('active');      // 要素が無いときは何もしない
-          return;
-        }
+      
+      const targetId = link.dataset.section;
+      const target = document.getElementById(targetId);
+      
+      if (target) {
+        target.classList.add('active');
         
-  // ログイン済みなら通常どおりカードを同期
-        await syncStampFromDB(globalUID);
-        updateStampDisplay();
-        updateRewardButtons();
+        // フードトラックセクションの場合の特別処理
+        if (targetId === 'foodtruck-section') {
+          if (!globalUID) {
+            const loginModal = document.getElementById('login-modal');
+            if (loginModal) loginModal.classList.add('active');
+            return;
+          }
+          
+          try {
+            await syncStampFromDB(globalUID);
+            updateStampDisplay();
+            updateRewardButtons();
+          } catch (error) {
+            console.error('Sync error:', error);
+          }
+        }
       }
-    
-    }, { passive:true });
+    }, { passive: false }); // passive: false でpreventDefaultを有効に
   });
-
-  
 
   /* カテゴリタブ */
   categoryTabs.forEach(tab => {
@@ -342,30 +375,45 @@ function loadStampCount() {
 }
 
 async function initApp() {
-  /* 🆕 ログイン確認 */
-  const { data: { session } } = await db.auth.getSession();
-  globalUID = session?.user?.id || null;
+  try {
+    // より確実なセッション取得
+    const { data: { session }, error } = await db.auth.getSession();
+    
+    if (error) {
+      console.error('Session error:', error);
+    }
+    
+    globalUID = session?.user?.id || null;
+    console.log('Session loaded:', { globalUID, session: !!session });
 
-   // ★ リロード時にモーダルが残っていたら必ず閉じる
-  if (globalUID) {
-   document.getElementById('login-modal')?.classList.remove('active');
- }
-  /* ローカルキャッシュ読み込みは UID 決定後 */
-  loadStampCount();
-
-  if (globalUID) {
-    stampCount = await fetchOrCreateUserRow(globalUID);   // ★ 差し替え
-  } else {
-    stampCount = 0;                                       // ★ 差し替え
-  }
-  updateStampDisplay();
-  updateRewardButtons();
-  renderArticles('all');
-  setupEventListeners();
-
-  /* 🆕 UI 切替（ログインフォームを非表示に）*/
-  if (globalUID) {
-    document.getElementById('login-form').remove();
+    // ログイン状態に関係なく基本機能を初期化
+    setupEventListeners();
+    renderArticles('all');
+    
+    // ログイン状態に応じた処理
+    if (globalUID) {
+      document.getElementById('login-modal')?.classList.remove('active');
+      stampCount = await fetchOrCreateUserRow(globalUID);
+      updateStampDisplay();
+      updateRewardButtons();
+      
+      // ログインフォームを削除（存在する場合のみ）
+      const loginForm = document.getElementById('login-form');
+      if (loginForm) {
+        loginForm.remove();
+      }
+    } else {
+      // 未ログイン時の初期化
+      stampCount = 0;
+      updateStampDisplay();
+      updateRewardButtons();
+    }
+    
+  } catch (error) {
+    console.error('Init error:', error);
+    // エラー時も基本機能は動作させる
+    setupEventListeners();
+    renderArticles('all');
   }
 }
 
