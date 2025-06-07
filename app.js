@@ -1,15 +1,7 @@
 // Route227Cafe Application
 
-// Data
+// Data (自社記事を削除し、報酬とQRのみ保持)
 const appData = {
-  articles: [
-    { id: 1, title: "仙台の新しいカフェ文化", category: "お店", date: "2025-06-05", excerpt: "仙台市内で注目を集める新しいカフェスタイルについて紹介します。", content: "仙台の街角に新しいカフェ文化が根付いています..." },
-    { id: 2, title: "Route227キッチンカー始動", category: "ニュース", date: "2025-06-04", excerpt: "Route227がキッチンカーでの営業を開始しました。", content: "東北227市町村の魅力を乗せたキッチンカーが..." },
-    { id: 3, title: "夏のカレーフェスティバル", category: "イベント", date: "2025-06-03", excerpt: "7月に開催予定の夏のカレーフェスティバルの詳細が決定しました。", content: "今年の夏も盛大にカレーフェスティバルを開催..." },
-    { id: 4, title: "東北食材の魅力", category: "お店", date: "2025-06-02", excerpt: "Route227で使用している東北各地の食材について。", content: "東北6県の豊かな食材を使用したメニュー..." },
-    { id: 5, title: "地域コミュニティとの連携", category: "ニュース", date: "2025-06-01", excerpt: "地域コミュニティとの新しい取り組みを発表。", content: "地域の皆様との連携を深めるプロジェクト..." },
-    { id: 6, title: "ワークショップ開催のお知らせ", category: "イベント", date: "2025-05-30", excerpt: "6月に開催されるワークショップの参加者を募集中です。", content: "東北の文化を体験できるワークショップ..." }
-  ],
   rewards: [
     { type: "coffee", stampsRequired: 3, name: "コーヒー1杯無料" },
     { type: "curry", stampsRequired: 6, name: "カレー1杯無料" }
@@ -90,9 +82,16 @@ function addStamp() {
 
 // Redeem a reward
 function redeemReward(type) {
-  if (type === 'coffee' && stampCount >= 3) { stampCount -= 3; showNotification('交換完了', 'コーヒー1杯無料の特典を交換しました！'); }
-  else if (type === 'curry' && stampCount >= 6) { stampCount -= 6; showNotification('交換完了', 'カレー1杯無料の特典を交換しました！'); }
-  saveStampCount(); updateStampDisplay(); updateRewardButtons();
+  if (type === 'coffee' && stampCount >= 3) {
+    stampCount -= 3;
+    showNotification('交換完了', 'コーヒー1杯無料の特典を交換しました！');
+  } else if (type === 'curry' && stampCount >= 6) {
+    stampCount -= 6;
+    showNotification('交換完了', 'カレー1杯無料の特典を交換しました！');
+  }
+  saveStampCount();
+  updateStampDisplay();
+  updateRewardButtons();
 }
 
 // Show notification modal
@@ -109,11 +108,16 @@ function initQRScanner() {
   qrReader.innerHTML = '';
   qrResult.innerHTML = '';
   const html5QrCode = new Html5Qrcode('qr-reader');
-  html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, onScanFailure)
-    .catch(error => {
-      qrResult.innerHTML = '<div class="status status--error">カメラへのアクセスに失敗しました。カメラの使用を許可してください。</div>';
-      console.error('QR Code Scanner error:', error);
-    });
+  html5QrCode.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onScanSuccess,
+    onScanFailure
+  ).catch(error => {
+    qrResult.innerHTML = '<div class="status status--error">カメラへのアクセスに失敗しました。カメラの使用を許可してください。</div>';
+    console.error('QR Code Scanner error:', error);
+  });
+
   function onScanSuccess(decodedText) {
     html5QrCode.stop().then(() => {
       if (decodedText === appData.qrString) {
@@ -124,41 +128,34 @@ function initQRScanner() {
       }
     }).catch(console.error);
   }
-  function onScanFailure(error) {}
+
+  function onScanFailure(error) {
+    // 継続的に呼ばれるので何もしない
+  }
 }
 
 // Render articles based on selected category
 function renderArticles(category) {
+  // Machico記事のみ表示
   articlesContainer.innerHTML = '';
-  const filtered = category === 'all' ? appData.articles : appData.articles.filter(a => a.category === category);
-  filtered.forEach(article => {
-    const card = document.createElement('div');
-    card.className = 'card article-card';
-    card.innerHTML = `
-      <div class="card__body">
-        <span class="article-category">${article.category}</span>
-        <h3 class="article-title">${article.title}</h3>
-        <div class="article-date">${formatDate(article.date)}</div>
-        <p class="article-excerpt">${article.excerpt}</p>
-      </div>`;
-    articlesContainer.appendChild(card);
-  });
-  // Machico記事を全カテゴリで表示
-  if (category === 'all') {
-    const externalArticles = [
-      { url: 'https://machico.mu/special/detail/2691', category: 'イベント' },
-      { url: 'https://machico.mu/special/detail/2704', category: 'イベント' },
-      { url: 'https://machico.mu/jump/ad/102236', category: 'ニュース' },
-      { url: 'https://machico.mu/special/detail/2926', category: 'ニュース' }
-    ];
-    externalArticles.forEach(({ url, category }) => {
+
+  const externalArticles = [
+    { url: 'https://machico.mu/special/detail/2691', category: 'イベント', title: '仙台の夏祭りとカフェ巡り', summary: '仙台市内で開催される夏祭りに合わせて、おすすめのカフェを紹介します。' },
+    { url: 'https://machico.mu/special/detail/2704', category: 'イベント', title: '七夕コンテスト特集', summary: '七夕にまつわるイベント情報と見どころをまとめました。' },
+    { url: 'https://machico.mu/jump/ad/102236', category: 'ニュース', title: '地域限定割引キャンペーン', summary: '地元カフェで使える限定割引クーポン情報をお届けします。' },
+    { url: 'https://machico.mu/special/detail/2926', category: 'ニュース', title: '新店舗オープン速報', summary: '東北地方に新しくオープンした飲食店情報を随時更新中。' }
+  ];
+
+  externalArticles
+    .filter(article => category === 'all' || article.category === category)
+    .forEach(({ url, category, title, summary }) => {
       fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
         .then(res => res.json())
         .then(data => {
-          const doc = new DOMParser().parseFromString(data.contents, 'text/html');
-          const title = doc.querySelector("meta[property='og:title']")?.content || '';
-          const desc = doc.querySelector("meta[property='og:description']")?.content || '';
-          const img = doc.querySelector("meta[property='og:image']")?.content || '';
+          const img = new DOMParser()
+            .parseFromString(data.contents, 'text/html')
+            .querySelector("meta[property='og:image']")?.content || '';
+
           const card = document.createElement('div');
           card.className = 'card article-card';
           card.innerHTML = `
@@ -167,40 +164,40 @@ function renderArticles(category) {
               <div class="card__body">
                 <span class="article-category">${category}</span>
                 <h3 class="article-title">${title}</h3>
-                <p class="article-excerpt">${desc}</p>
+                <p class="article-excerpt">${summary}</p>
               </div>
             </a>`;
+
           articlesContainer.appendChild(card);
         })
         .catch(console.error);
     });
-  }
-}
-
-// Format date to Japanese style
-function formatDate(d) {
-  const date = new Date(d);
-  return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日`;
 }
 
 // Close modal
-function closeModal(modal) { modal.classList.remove('active'); }
+function closeModal(modal) {
+  modal.classList.remove('active');
+}
 
 // Setup Event Listeners
 function setupEventListeners() {
   navLinks.forEach(link => link.addEventListener('click', () => {
-    navLinks.forEach(n => n.classList.remove('active')); link.classList.add('active');
+    navLinks.forEach(n => n.classList.remove('active'));
+    link.classList.add('active');
     sections.forEach(sec => sec.classList.remove('active'));
     document.getElementById(link.getAttribute('data-section')).classList.add('active');
   }));
+
   categoryTabs.forEach(tab => tab.addEventListener('click', () => {
-    categoryTabs.forEach(t => t.classList.remove('active')); tab.classList.add('active');
+    categoryTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
     renderArticles(tab.getAttribute('data-category'));
   }));
+
   scanQrButton.addEventListener('click', () => { qrModal.classList.add('active'); initQRScanner(); });
   closeModalButtons.forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
   closeNotificationButton.addEventListener('click', () => closeModal(notificationModal));
-  coffeeRewardButton.addEventListener('click', () => redeemReward('coffee'));
+  coffeeRewardButton.addEventListener('click', () => redeemReward('coffee')); 
   curryRewardButton.addEventListener('click', () => redeemReward('curry'));
 }
 
