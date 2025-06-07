@@ -1,17 +1,17 @@
 :root {
   /* Colors */
   --color-background: rgba(252, 252, 249, 1);
-  --color-surface: rgba(255, 255, 253, 1);
+  --color-surface: #fff9f5;
   --color-text: rgba(19, 52, 59, 1);
   --color-text-secondary: rgba(98, 108, 113, 1);
-  --color-primary: rgba(33, 128, 141, 1);
-  --color-primary-hover: rgba(29, 116, 128, 1);
-  --color-primary-active: rgba(26, 104, 115, 1);
+  --color-primary: #f26a2e;
+  --color-primary-hover: #e15c1b;
+  --color-primary-active: #d14e0e;
   --color-secondary: rgba(94, 82, 64, 0.12);
   --color-secondary-hover: rgba(94, 82, 64, 0.2);
   --color-secondary-active: rgba(94, 82, 64, 0.25);
-  --color-border: rgba(94, 82, 64, 0.2);
-  --color-btn-primary-text: rgba(252, 252, 249, 1);
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-btn-primary-text: #fff;
   --color-card-border: rgba(94, 82, 64, 0.12);
   --color-card-border-inner: rgba(94, 82, 64, 0.12);
   --color-error: rgba(192, 21, 47, 1);
@@ -669,7 +669,6 @@ select.form-control {
   text-align: center;
 }
 
-/* Footer Navigation */
 .footer-nav {
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
@@ -677,44 +676,61 @@ select.form-control {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: 80px;
   z-index: 9999;
   box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.05);
 }
 
 .footer-nav .nav-tabs {
   display: flex;
+  height: 100%;
   list-style: none;
   margin: 0;
   padding: 0;
+  align-items: center;
+  justify-content: space-around;
 }
 
 .footer-nav .nav-item {
   flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .footer-nav .nav-link {
-  display: block;
-  width: 100%;
-  padding: var(--space-12) var(--space-8);
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
   background: none;
   border: none;
-  color: var(--color-text-secondary);
-  font-weight: var(--font-weight-medium);
-  border-top: 2px solid transparent;
   cursor: pointer;
+  width: 100%;
+  height: 100%;
   transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.footer-nav .nav-link span {
+  font-size: var(--font-size-xl);
+  line-height: 1;
 }
 
 .footer-nav .nav-link.active {
   color: var(--color-primary);
-  border-top-color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
 }
 
+.footer-nav .nav-link.active span {
+  font-size: var(--font-size-xl);
+}
 /* Body bottom padding to avoid overlap */
 body {
-  padding-bottom: 60px; /* navの高さ分スペース確保 */
+  padding-bottom: 60px;
+  font-family: var(--font-family-base);
+  background-color: var(--color-surface);
 }
 
 .nav-tabs {
