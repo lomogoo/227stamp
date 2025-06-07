@@ -1,7 +1,8 @@
 // ===== Supabase設定 =====
-const SUPABASE_URL = 'https://hccairtzksnnqdujalgv.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(
+  'https://hccairtzksnnqdujalgv.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjY2FpcnR6a3NubnFkdWphbGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNjI2MTYsImV4cCI6MjA2NDgzODYxNn0.TVDucIs5ClTWuykg_fy4yv65Rg-xbSIPFIfvIYawy_k'
+);
 
 // ===== グローバル変数 =====
 let globalUID = null;
@@ -53,7 +54,7 @@ async function updateUserStatus(user) {
     stampCount = await fetchOrCreateUserRow(globalUID);
     closeModal('login-modal');
     
-    // ログインフォームを削除
+    // ログインフォームを非表示
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
       loginForm.style.display = 'none';
@@ -68,49 +69,28 @@ async function updateUserStatus(user) {
 }
 
 // ===== データベース操作 =====
-async function fetchOrCreateUserRow(userId) {
+async function fetchOrCreateUserRow(uid) {
   try {
     const { data, error } = await db
       .from('users')
       .select('stamp_count')
-      .eq('id', userId)
-      .single();
+      .eq('supabase_uid', uid)
+      .maybeSingle();
 
-    if (error && error.code === 'PGRST116') {
-      // ユーザーが存在しない場合は新規作成
-      const { data: newUser, error: insertError } = await db
+    if (!data) {
+      const { data: inserted, error: iErr } = await db
         .from('users')
-        .insert({ id: userId, stamp_count: 0 })
+        .insert([{ supabase_uid: uid, stamp_count: 0 }])
         .select('stamp_count')
         .single();
-      
-      if (insertError) throw insertError;
-      return newUser.stamp_count;
+      if (iErr) throw iErr;
+      return inserted.stamp_count;
     }
-    
     if (error) throw error;
     return data.stamp_count;
   } catch (error) {
     console.error('ユーザーデータ取得エラー:', error);
     return 0;
-  }
-}
-
-async function fetchArticles(category = 'all') {
-  try {
-    let query = db.from('articles').select('*').order('created_at', { ascending: false });
-    
-    if (category !== 'all') {
-      query = query.eq('category', category);
-    }
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    
-    return data || [];
-  } catch (error) {
-    console.error('記事取得エラー:', error);
-    return [];
   }
 }
 
@@ -120,12 +100,13 @@ async function updateStampCount(newCount) {
   try {
     const { error } = await db
       .from('users')
-      .update({ stamp_count: newCount })
-      .eq('id', globalUID);
+      .update({ stamp_count: newCount, updated_at: new Date().toISOString() })
+      .eq('supabase_uid', globalUID);
     
     if (error) throw error;
     
     stampCount = newCount;
+    localStorage.setItem('route227_stamps', stampCount);
     updateStampDisplay();
     updateRewardButtons();
     return true;
@@ -141,25 +122,45 @@ async function renderArticles(category) {
   if (!container) return;
   
   try {
-    container.innerHTML = '<div class="loading">記事を読み込み中...</div>';
+    container.innerHTML = '<div class="loading-spinner"></div>';
     
-    const articles = await fetchArticles(category);
+    // 過去のコードから取り上げていた記事5つを反映
+    const list = [
+      { url: 'https://machico.mu/special/detail/2691', category: 'イベント', title: 'Machico 2691', summary: 'イベント記事' },
+      { url: 'https://machico.mu/special/detail/2704', category: 'イベント', title: 'Machico 2704', summary: 'イベント記事' },
+      { url: 'https://machico.mu/jump/ad/102236', category: 'ニュース', title: 'Machico 102236', summary: 'ニュース記事' },
+      { url: 'https://machico.mu/special/detail/2926', category: 'ニュース', title: 'Machico 2926', summary: 'ニュース記事' },
+      { url: 'https://machico.mu/special/detail/1234', category: 'お店', title: 'Machico 1234', summary: 'お店記事' }
+    ];
     
-    if (articles.length === 0) {
-      container.innerHTML = '<div class="no-articles">記事がありません</div>';
-      return;
-    }
+    const targets = list.filter(a => category === 'all' || a.category === category);
     
-    container.innerHTML = articles.map(article => `
-      <article class="article-card">
-        <div class="article-header">
-          <span class="article-category">${article.category || 'その他'}</span>
-          <time class="article-date">${formatDate(article.created_at)}</time>
-        </div>
-        <h3 class="article-title">${escapeHtml(article.title)}</h3>
-        <p class="article-content">${escapeHtml(article.content?.substring(0, 100) || '')}...</p>
-      </article>
-    `).join('');
+    const cards = await Promise.all(targets.map(async a => {
+      try {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`);
+        const d = await res.json();
+        const doc = new DOMParser().parseFromString(d.contents, 'text/html');
+        return { ...a, img: doc.querySelector("meta[property='og:image']")?.content || 'assets/placeholder.jpg' };
+      } catch {
+        return { ...a, img: 'assets/placeholder.jpg' };
+      }
+    }));
+    
+    container.innerHTML = '';
+    cards.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'card article-card';
+      div.innerHTML = `
+        <a href="${a.url}" target="_blank" rel="noopener noreferrer">
+          <img src="${a.img}" alt="${a.title}のサムネイル">
+          <div class="card__body" aria-label="記事: ${a.title}">
+            <span class="article-category">${a.category}</span>
+            <h3 class="article-title">${a.title}</h3>
+            <p class="article-excerpt">${a.summary}</p>
+          </div>
+        </a>`;
+      container.appendChild(div);
+    });
   } catch (error) {
     console.error('記事描画エラー:', error);
     container.innerHTML = '<div class="error">記事の読み込みに失敗しました</div>';
@@ -168,14 +169,11 @@ async function renderArticles(category) {
 
 function updateStampDisplay() {
   const stamps = document.querySelectorAll('.stamp');
-  stamps.forEach((stamp, index) => {
-    const stampId = index + 1;
-    if (stampId <= stampCount) {
-      stamp.classList.add('collected');
-      stamp.innerHTML = '⭐';
+  stamps.forEach((el, i) => {
+    if (i < stampCount) {
+      el.classList.add('active');
     } else {
-      stamp.classList.remove('collected');
-      stamp.innerHTML = '';
+      el.classList.remove('active');
     }
   });
 }
@@ -196,45 +194,54 @@ function updateRewardButtons() {
 // ===== イベントリスナー設定 =====
 function setupEventListeners() {
   // カテゴリタブ
-  const categoryTabs = document.querySelector('.category-tabs');
-  if (categoryTabs) {
-    categoryTabs.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('category-tab')) {
-        // アクティブタブの更新
-        document.querySelectorAll('.category-tab').forEach(tab => 
-          tab.classList.remove('active')
-        );
-        e.target.classList.add('active');
-        
-        // 記事の再描画
-        const category = e.target.dataset.category;
-        await renderArticles(category);
-      }
-    });
-  }
+  const categoryTabs = document.querySelectorAll('.category-tab');
+  categoryTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      categoryTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderArticles(tab.dataset.category);
+    }, { passive: true });
+  });
   
   // ナビゲーション
-  const navTabs = document.querySelectorAll('.nav-link');
-  navTabs.forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      const targetSection = e.currentTarget.dataset.section;
+  const navLinks = document.querySelectorAll('.nav-link');
+  navLinks.forEach(link => {
+    link.addEventListener('click', async () => {
+      navLinks.forEach(n => n.classList.remove('active'));
+      link.classList.add('active');
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(link.dataset.section);
+      target.classList.add('active');
       
-      // アクティブナビの更新
-      navTabs.forEach(nav => nav.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      
-      // セクションの切り替え
-      document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-      });
-      document.getElementById(targetSection)?.classList.add('active');
-    });
+      // スタンプカードページで未ログインの場合、ログインモーダルを表示
+      if (link.dataset.section === 'foodtruck-section' && !globalUID) {
+        openModal('login-modal');
+      } else if (link.dataset.section === 'foodtruck-section' && globalUID) {
+        const spinner = document.getElementById('stamp-spinner');
+        spinner?.classList.remove('hidden');
+        try {
+          await syncStampFromDB(globalUID);
+        } finally {
+          spinner?.classList.add('hidden');
+        }
+        updateStampDisplay();
+        updateRewardButtons();
+      }
+    }, { passive: true });
   });
   
   // QRスキャンボタン
   const scanButton = document.getElementById('scan-qr');
   if (scanButton) {
-    scanButton.addEventListener('click', openQRScanner);
+    scanButton.addEventListener('click', () => {
+      if (!globalUID) {
+        showNotification('QRコードをスキャンするにはログインが必要です', 'ログインが必要');
+        openModal('login-modal');
+        return;
+      }
+      openModal('qr-modal');
+      initQRScanner();
+    });
   }
   
   // 報酬交換ボタン
@@ -242,146 +249,147 @@ function setupEventListeners() {
   const curryButton = document.getElementById('curry-reward');
   
   if (coffeeButton) {
-    coffeeButton.addEventListener('click', () => exchangeReward(3, 'コーヒー'));
+    coffeeButton.addEventListener('click', () => redeemReward('coffee'));
   }
   
   if (curryButton) {
-    curryButton.addEventListener('click', () => exchangeReward(6, 'カレー'));
+    curryButton.addEventListener('click', () => redeemReward('curry'));
   }
   
   // ログインフォーム
   const loginForm = document.getElementById('login-form');
   if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const msg = document.getElementById('login-message');
+      try {
+        msg.textContent = '送信中...';
+        const { data, error } = await db.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
+            shouldCreateUser: true
+          }
+        });
+        console.log('[Auth] signInWithOtp →', { data, error });
+        if (error) {
+          msg.textContent = '❌ メール送信に失敗しました';
+          console.error(error);
+        } else {
+          msg.textContent = '✅ メールを確認してください！';
+        }
+      } catch (error) {
+        msg.textContent = '❌ メール送信に失敗しました';
+        console.error('ログインエラー:', error);
+      }
+    });
   }
   
   // モーダル関連
-  document.querySelectorAll('.close-modal').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const modal = e.target.closest('.modal');
-      if (modal) closeModal(modal.id);
-    });
+  document.querySelectorAll('.close-modal').forEach(btn => {
+    btn.addEventListener('click', closeAllModals, { passive: true });
   });
   
-  const closeNotificationButton = document.querySelector('.close-notification');
-  if (closeNotificationButton) {
-    closeNotificationButton.addEventListener('click', () => closeModal('notification-modal'));
-  }
+  document.querySelector('.close-notification')?.addEventListener('click', () => closeModal('notification-modal'), { passive: true });
 }
 
 // ===== QRコード関連 =====
-async function openQRScanner() {
-  if (!globalUID) {
-    showNotification('QRコードをスキャンするにはログインが必要です', 'ログインが必要');
-    openModal('login-modal');
-    return;
-  }
+function initQRScanner() {
+  const qrReader = document.getElementById('qr-reader');
+  qrReader.innerHTML = '';
+  html5QrCode = new Html5Qrcode('qr-reader');
   
-  openModal('qr-modal');
-  
-  try {
-    html5QrCode = new Html5Qrcode("qr-reader");
-    
-    await html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 }
-      },
-      onQRCodeScanned,
-      onQRCodeError
-    );
-  } catch (error) {
-    console.error('QRスキャナー開始エラー:', error);
-    showNotification('QRスキャナーの開始に失敗しました', 'エラー');
-    closeModal('qr-modal');
-  }
-}
-
-async function onQRCodeScanned(decodedText) {
-  try {
-    // QRコードを停止
-    if (html5QrCode) {
+  html5QrCode.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    async text => {
       await html5QrCode.stop();
-      html5QrCode = null;
-    }
-    
-    closeModal('qr-modal');
-    
-    // スタンプを追加（最大6個まで）
-    if (stampCount < 6) {
-      const success = await updateStampCount(stampCount + 1);
-      if (success) {
-        showNotification(`スタンプを獲得しました！(${stampCount}/6)`, 'スタンプ獲得');
+      html5QrCode.clear();
+      if (text === 'ROUTE227_STAMP_2025') {
+        await addStamp();
       } else {
-        showNotification('スタンプの保存に失敗しました', 'エラー');
+        showNotification('無効なQR', '読み取れませんでした');
       }
-    } else {
-      showNotification('スタンプカードが満杯です！', 'お知らせ');
-    }
-  } catch (error) {
-    console.error('QRコード処理エラー:', error);
-    showNotification('QRコードの処理に失敗しました', 'エラー');
-  }
+      closeModal('qr-modal');
+    },
+    () => {}
+  ).catch(() => {
+    qrReader.innerHTML = '<div class="status status--error">カメラエラー</div>';
+  });
 }
 
-function onQRCodeError(error) {
-  // QRコードが見つからない場合のエラーは無視
-  if (error.includes('QR code parse error')) return;
-  console.error('QRスキャンエラー:', error);
-}
-
-// ===== 報酬交換 =====
-async function exchangeReward(requiredStamps, rewardName) {
-  if (!globalUID) {
-    showNotification('報酬を交換するにはログインが必要です', 'ログインが必要');
-    return;
-  }
-  
-  if (stampCount < requiredStamps) {
-    showNotification(`${rewardName}の交換には${requiredStamps}個のスタンプが必要です`, 'スタンプ不足');
-    return;
-  }
-  
-  const success = await updateStampCount(stampCount - requiredStamps);
-  if (success) {
-    showNotification(`${rewardName}と交換しました！お店でご提示ください`, '交換完了');
-  } else {
-    showNotification('交換処理に失敗しました', 'エラー');
-  }
-}
-
-// ===== ログイン処理 =====
-async function handleLogin(e) {
-  e.preventDefault();
-  
-  const email = document.getElementById('email').value;
-  const messageElement = document.getElementById('login-message');
-  
-  if (!email) {
-    messageElement.textContent = 'メールアドレスを入力してください';
-    return;
-  }
+async function syncStampFromDB(uid) {
+  if (!uid) return;
   
   try {
-    messageElement.textContent = '送信中...';
+    const { data, error } = await db
+      .from('users')
+      .select('stamp_count')
+      .eq('supabase_uid', uid)
+      .maybeSingle();
     
-    const { error } = await db.auth.signInWithOtp({
-      email: email,
-      options: {
-        emailRedirectTo: window.location.origin
+    let remote = 0;
+    if (!data) {
+      const row = { supabase_uid: uid, stamp_count: stampCount };
+      const { error: insertError } = await db.from('users').insert([row]);
+      if (insertError) {
+        console.error('INSERT error', insertError);
       }
-    });
+      remote = stampCount;
+    } else {
+      remote = data?.stamp_count ?? 0;
+    }
     
-    if (error) throw error;
-    
-    messageElement.textContent = 'マジックリンクを送信しました！メールをご確認ください';
-    messageElement.style.color = 'green';
+    if (remote > stampCount) {
+      stampCount = remote;
+      localStorage.setItem('route227_stamps', stampCount);
+    } else if (remote < stampCount) {
+      await updateStampCount(stampCount);
+    }
   } catch (error) {
-    console.error('ログインエラー:', error);
-    messageElement.textContent = 'ログインに失敗しました: ' + error.message;
-    messageElement.style.color = 'red';
+    console.error('スタンプ同期エラー:', error);
   }
+}
+
+async function addStamp() {
+  if (!globalUID) {
+    showNotification('要ログイン', '先にログインしてください');
+    return;
+  }
+  if (stampCount >= 6) {
+    showNotification('スタンプ満杯', 'スタンプカードが満杯です');
+    return;
+  }
+  stampCount++;
+  await updateStampCount(stampCount);
+  
+  if (stampCount === 3) {
+    showNotification('🎉', 'コーヒー1杯無料ゲット！');
+  } else if (stampCount === 6) {
+    showNotification('🎉', 'カレー1杯無料ゲット！');
+  } else {
+    showNotification('スタンプ獲得', `現在 ${stampCount} 個`);
+  }
+}
+
+async function redeemReward(type) {
+  if (!globalUID) {
+    showNotification('要ログイン', '先にログインしてください');
+    return;
+  }
+  
+  if (type === 'coffee' && stampCount >= 3) {
+    stampCount -= 3;
+  } else if (type === 'curry' && stampCount >= 6) {
+    stampCount -= 6;
+  } else {
+    showNotification('スタンプ不足', `${type === 'coffee' ? 'コーヒー' : 'カレー'}の交換に必要なスタンプが足りません`);
+    return;
+  }
+  
+  await updateStampCount(stampCount);
+  showNotification('交換完了', type === 'coffee' ? 'コーヒー交換！' : 'カレー交換！');
 }
 
 // ===== モーダル操作 =====
@@ -399,7 +407,6 @@ function closeModal(modalId) {
     modal.classList.remove('active');
     document.body.style.overflow = '';
     
-    // QRスキャナーが動作中の場合は停止
     if (modalId === 'qr-modal' && html5QrCode) {
       html5QrCode.stop().catch(console.error);
       html5QrCode = null;
@@ -407,28 +414,21 @@ function closeModal(modalId) {
   }
 }
 
-function showNotification(message, title = 'お知らせ') {
+function closeAllModals() {
+  document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+  document.body.style.overflow = '';
+  if (html5QrCode) {
+    html5QrCode.stop().catch(console.error);
+    html5QrCode = null;
+  }
+}
+
+function showNotification(title, msg) {
   const titleElement = document.getElementById('notification-title');
   const messageElement = document.getElementById('notification-message');
   
   if (titleElement) titleElement.textContent = title;
-  if (messageElement) messageElement.textContent = message;
+  if (messageElement) messageElement.textContent = msg;
   
   openModal('notification-modal');
-}
-
-// ===== ユーティリティ関数 =====
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
