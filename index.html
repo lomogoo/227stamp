@@ -7,6 +7,28 @@
   <link rel="stylesheet" href="style.css"/>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+// CSS読み込み確認
+document.addEventListener('DOMContentLoaded', () => {
+  const checkStyles = () => {
+    const testElement = document.createElement('div');
+    testElement.className = 'app-header';
+    document.body.appendChild(testElement);
+    
+    const styles = window.getComputedStyle(testElement);
+    const stylesLoaded = styles.display !== '';
+    
+    document.body.removeChild(testElement);
+    
+    if (!stylesLoaded) {
+      console.warn('Styles not fully loaded, retrying...');
+      setTimeout(checkStyles, 100);
+    }
+  };
+  
+  checkStyles();
+});
+</script>
 </head>
 <body>
   <header class="app-header">
