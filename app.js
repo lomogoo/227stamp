@@ -117,7 +117,7 @@ function updateRewardButtons() {
   curryRewardButton.disabled  = stampCount < 6;
 }
 
-function addStamp() {
+async function addStamp() {
   if (stampCount < 6) {
     stampCount++;
     await saveStampCount();
