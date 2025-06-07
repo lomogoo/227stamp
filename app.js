@@ -1,5 +1,5 @@
 // ===== Supabase設定 =====
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_URL = 'https://hccairtzksnnqdujalgv.supabase.co';
 const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
