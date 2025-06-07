@@ -134,11 +134,9 @@ function initQRScanner() {
   }
 }
 
-// Render articles based on selected category
-function renderArticles(category) {
-  // Machico記事のみ表示
-  articlesContainer.innerHTML = '';
-
+// Render external Machico articles with controlled order and loading spinner
+async function renderArticles(category) {
+  // 記事定義の順番で確実に表示
   const externalArticles = [
     { url: 'https://machico.mu/special/detail/2691', category: 'イベント', title: '「仙臺横丁フェス」6月13日（金）～15日（日）開催', summary: '【会場で使えるお食事券をゲットしよう！】「仙臺横丁フェス」6月13日（金）～15日（日）開催' },
     { url: 'https://machico.mu/special/detail/2704', category: 'イベント', title: 'Kappo presents 杜の都のワイン祭り 「バル仙台2025」 開催！', summary: 'machicoタイアップ企画に参加してイベントをもっと楽しもう♪' },
@@ -146,32 +144,48 @@ function renderArticles(category) {
     { url: 'https://machico.mu/special/detail/2926', category: 'ニュース', title: 'DoFree！Vol.311～本間ちゃんのここだけの話～', summary: '『北の湖…輪島 魁傑 富士桜』' }
   ];
 
-  externalArticles
-    .filter(article => category === 'all' || article.category === category)
-    .forEach(({ url, category, title, summary }) => {
-      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
-        .then(res => res.json())
-        .then(data => {
-          const img = new DOMParser()
-            .parseFromString(data.contents, 'text/html')
-            .querySelector("meta[property='og:image']")?.content || '';
+  // ローディングスピナー表示
+  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
 
-          const card = document.createElement('div');
-          card.className = 'card article-card';
-          card.innerHTML = `
-            <a href="${url}" target="_blank" rel="noopener noreferrer">
-              <img src="${img}" alt="${title}" />
-              <div class="card__body">
-                <span class="article-category">${category}</span>
-                <h3 class="article-title">${title}</h3>
-                <p class="article-excerpt">${summary}</p>
-              </div>
-            </a>`;
+  // カテゴリフィルタ
+  const targets = externalArticles.filter(a => category === 'all' || a.category === category);
 
-          articlesContainer.appendChild(card);
-        })
-        .catch(console.error);
+  // 全ての fetch を順序どおりに実行しつつ、Promise.all で順序保証
+  try {
+    const results = await Promise.all(
+      targets.map(article =>
+        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(article.url)}`)
+          .then(res => res.json())
+          .then(data => ({ article, data }))
+      )
+    );
+
+    // スピナー削除
+    articlesContainer.innerHTML = '';
+
+    // 取得順（元配列順）で描画
+    results.forEach(({ article, data }) => {
+      const img = new DOMParser()
+        .parseFromString(data.contents, 'text/html')
+        .querySelector("meta[property='og:image']")?.content || '';
+
+      const card = document.createElement('div');
+      card.className = 'card article-card';
+      card.innerHTML = `
+        <a href="${article.url}" target="_blank" rel="noopener noreferrer">
+          <img src="${img}" alt="${article.title}" />
+          <div class="card__body">
+            <span class="article-category">${article.category}</span>
+            <h3 class="article-title">${article.title}</h3>
+            <p class="article-excerpt">${article.summary}</p>
+          </div>
+        </a>`;
+      articlesContainer.appendChild(card);
     });
+  } catch (err) {
+    console.error('記事取得中にエラー:', err);
+    articlesContainer.innerHTML = '<p>記事の読み込みに失敗しました。</p>';
+  }
 }
 
 // Close modal
@@ -185,19 +199,29 @@ function setupEventListeners() {
     navLinks.forEach(n => n.classList.remove('active'));
     link.classList.add('active');
     sections.forEach(sec => sec.classList.remove('active'));
-    document.getElementById(link.getAttribute('data-section')).classList.add('active');
+    document.getElementById(link.dataset.section).classList.add('active');
   }));
 
   categoryTabs.forEach(tab => tab.addEventListener('click', () => {
     categoryTabs.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
-    renderArticles(tab.getAttribute('data-category'));
+    renderArticles(tab.dataset.category);
   }));
 
-  scanQrButton.addEventListener('click', () => { qrModal.classList.add('active'); initQRScanner(); });
-  closeModalButtons.forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
-  closeNotificationButton.addEventListener('click', () => closeModal(notificationModal));
-  coffeeRewardButton.addEventListener('click', () => redeemReward('coffee')); 
+  scanQrButton.addEventListener('click', () => {
+    qrModal.classList.add('active');
+    initQRScanner();
+  });
+
+  closeModalButtons.forEach(btn => btn.addEventListener('click', () =>
+    closeModal(btn.closest('.modal'))
+  ));
+
+  closeNotificationButton.addEventListener('click', () =>
+    closeModal(notificationModal)
+  );
+
+  coffeeRewardButton.addEventListener('click', () => redeemReward('coffee'));
   curryRewardButton.addEventListener('click', () => redeemReward('curry'));
 }
 
