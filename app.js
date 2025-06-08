@@ -5,11 +5,6 @@ const db = window.supabase.createClient(
 );
 
 /* 2) グローバル変数 */
-let deviceId = localStorage.getItem('deviceId') || (() => {
-  const id = crypto.randomUUID();
-  localStorage.setItem('deviceId', id);
-  return id;
-})();
 let stampCount = 0;
 let html5QrCode = null;
 let eventBound = false;
@@ -28,51 +23,97 @@ function getElements() {
     notificationMessage: document.getElementById('notification-message'),
     notificationModal: document.getElementById('notification-modal'),
     scanQrButton: document.getElementById('scan-qr'),
-    stamps: document.querySelectorAll('.stamp')
+    stamps: document.querySelectorAll('.stamp'),
+    loginModal: document.getElementById('login-modal'),
+    loginForm: document.getElementById('login-form'),
+    stampSpinner: document.getElementById('stamp-spinner'),
   };
 }
 
-/* 4) 認証状態変更のハンドラー (アプリケーションのメインコントローラー) */
-db.auth.onAuthStateChange(async (event, session) => {
-  if (session && session.user) {
-    // ログイン状態の場合 (ページリロード時も含む)
-    globalUID = session.user.id;
-    stampCount = await fetchOrCreateUserRow(globalUID);
-    localStorage.setItem('route227_stamps', stampCount.toString());
+/* ==================================================================== */
+/* アプリケーションのメイン処理 (ここから)                               */
+/* ==================================================================== */
 
-    // UIを更新
-    updateStampDisplay();
-    updateRewardButtons();
-    document.getElementById('login-modal')?.classList.remove('active');
+document.addEventListener('DOMContentLoaded', () => {
 
-    // ログインフォームを削除
-    const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-      loginForm.remove();
-    }
-  } else {
-    // ログアウト状態の場合
-    globalUID = null;
-    stampCount = 0;
-    localStorage.removeItem('route227_stamps');
-    
-    // UIをリセット
-    updateStampDisplay();
-    updateRewardButtons();
+  /**
+   * STEP 1: イベントリスナーを最初に一度だけ設定する
+   * これにより、ボタンが機能しなくなる問題を完全に防ぎます。
+   */
+  setupEventListeners();
+
+  /**
+   * STEP 2: ログインフォームの送信処理を設定する
+   */
+  const { loginForm } = getElements();
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const { data, error } = await db.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
+          shouldCreateUser: true
+        }
+      });
+
+      const msg = document.getElementById('login-message');
+      if (error) {
+        msg.textContent = '❌ メール送信に失敗しました';
+        console.error(error);
+      } else {
+        msg.textContent = '✅ メールを確認してください！';
+      }
+    });
   }
 
-  // 認証状態が確定した後に、必ずフィード記事を表示する
-  await renderArticles('all');
-  
-  // カテゴリタブの状態を「ALL」にリセットする
-  const elements = getElements();
-  elements.categoryTabs.forEach(tab => {
-    tab.classList.toggle('active', tab.dataset.category === 'all');
+  /**
+   * STEP 3: 認証状態の変更を監視し、UIを更新する
+   * ページ読み込み時、ログイン時、ログアウト時に実行され、
+   * 常に正しい状態を画面に描画します。
+   */
+  db.auth.onAuthStateChange(async (event, session) => {
+    const { articlesContainer, loginModal } = getElements();
+
+    // 処理中にローディング表示
+    if (articlesContainer) {
+      articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
+    }
+
+    if (session && session.user) {
+      // --- ログイン状態の処理 ---
+      globalUID = session.user.id;
+      stampCount = await fetchOrCreateUserRow(globalUID);
+      localStorage.setItem('route227_stamps', stampCount.toString());
+      loginModal?.classList.remove('active');
+    } else {
+      // --- ログアウト状態の処理 ---
+      globalUID = null;
+      stampCount = 0;
+      localStorage.removeItem('route227_stamps');
+    }
+
+    // 状態に基づいてUI全体を更新
+    updateStampDisplay();
+    updateRewardButtons();
+    
+    // 記事フィードを描画
+    await renderArticles('all');
+    
+    // カテゴリタブをリセット
+    getElements().categoryTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.category === 'all');
+    });
   });
 });
 
 
-/* 6) ユーザー行の取得/作成 */
+/* ==================================================================== */
+/* ヘルパー関数群 (ここから)                                           */
+/* ==================================================================== */
+
+/* ユーザー行の取得/作成 */
 async function fetchOrCreateUserRow(uid) {
   try {
     const { data, error } = await db
@@ -81,6 +122,10 @@ async function fetchOrCreateUserRow(uid) {
       .eq('supabase_uid', uid)
       .maybeSingle();
 
+    if (error && error.code !== 'PGRST116') { // 'PGRST116' (range not satisfiable) は無視してOK
+        throw error;
+    }
+      
     if (!data) {
       const { data: inserted, error: iErr } = await db
         .from('users')
@@ -90,16 +135,16 @@ async function fetchOrCreateUserRow(uid) {
       if (iErr) throw iErr;
       return inserted.stamp_count;
     }
-    if (error) throw error;
-
+    
     return data.stamp_count;
   } catch (err) {
     console.error('[fetchOrCreateUserRow]', err);
+    showNotification('エラー', 'ユーザー情報の取得に失敗しました。');
     return 0;
   }
 }
 
-/* 7) アプリデータ */
+/* アプリデータ */
 const appData = {
   rewards: [
     { type: "coffee", stampsRequired: 3, name: "コーヒー1杯無料" },
@@ -108,9 +153,9 @@ const appData = {
   qrString: "ROUTE227_STAMP_2025"
 };
 
-/* 8) 共通ユーティリティ関数 */
+/* 共通ユーティリティ関数 */
 async function updateStampCount(newCount) {
-  if (!globalUID) return; // UIDがない場合は更新しない
+  if (!globalUID) return;
 
   const { error } = await db
     .from('users')
@@ -122,71 +167,58 @@ async function updateStampCount(newCount) {
 async function syncStampFromDB(uid) {
   if (!uid) return;
 
-  const { data, error } = await db
-    .from('users')
-    .select('stamp_count')
-    .eq('supabase_uid', uid)
-    .maybeSingle();
+  const { stampSpinner } = getElements();
+  if(stampSpinner) stampSpinner.classList.remove('hidden');
 
-  let remote = 0;
-
-  if (!data) {
-    const row = { supabase_uid: uid, stamp_count: stampCount };
-    const { error: insertError } = await db.from('users').insert([row]);
-    if (insertError) {
-      console.error('INSERT error', insertError);
+  try {
+    const remoteCount = await fetchOrCreateUserRow(uid);
+    if (remoteCount > stampCount) {
+        stampCount = remoteCount;
+    } else if (remoteCount < stampCount) {
+        await updateStampCount(stampCount);
     }
-    remote = stampCount;
-  } else {
-    remote = data?.stamp_count ?? 0;
-  }
-
-  if (remote > stampCount) {
-    stampCount = remote;
-    localStorage.setItem('route227_stamps', stampCount);
-  } else if (remote < stampCount) {
-    await updateStampCount(stampCount);
+    localStorage.setItem('route227_stamps', stampCount.toString());
+    updateStampDisplay();
+    updateRewardButtons();
+  } finally {
+    if(stampSpinner) stampSpinner.classList.add('hidden');
   }
 }
 
 function updateStampDisplay() {
-  const elements = getElements();
-  elements.stamps.forEach((el, i) =>
-    i < stampCount ? el.classList.add('active') : el.classList.remove('active'));
-}
-
-function saveLocalStamp() { 
-  if (!globalUID) return; 
-  localStorage.setItem('route227_stamps', stampCount);
+  getElements().stamps.forEach((el, i) =>
+    el.classList.toggle('active', i < stampCount));
 }
 
 function updateRewardButtons() {
-  const elements = getElements();
-  if (elements.coffeeRewardButton) elements.coffeeRewardButton.disabled = stampCount < 3;
-  if (elements.curryRewardButton) elements.curryRewardButton.disabled = stampCount < 6;
+  const { coffeeRewardButton, curryRewardButton } = getElements();
+  if (coffeeRewardButton) coffeeRewardButton.disabled = stampCount < 3;
+  if (curryRewardButton) curryRewardButton.disabled = stampCount < 6;
 }
 
 function showNotification(title, msg) {
-  const elements = getElements();
-  if (elements.notificationTitle) elements.notificationTitle.textContent = title;
-  if (elements.notificationMessage) elements.notificationMessage.textContent = msg;
-  if (elements.notificationModal) elements.notificationModal.classList.add('active');
+  const { notificationTitle, notificationMessage, notificationModal } = getElements();
+  if (notificationTitle) notificationTitle.textContent = title;
+  if (notificationMessage) notificationMessage.textContent = msg;
+  if (notificationModal) notificationModal.classList.add('active');
 }
 
 async function addStamp() {
+  const { loginModal } = getElements();
   if (!globalUID) {
     showNotification('要ログイン', 'スタンプを押すにはログインが必要です。');
-    document.getElementById('login-modal')?.classList.add('active');
+    loginModal?.classList.add('active');
     return;
   }
-  if (stampCount >= 6) return;
+  if (stampCount >= 6) {
+    showNotification('スタンプカード満杯', '既にスタンプが6個たなっています！');
+    return;
+  }
   
   stampCount++;
-  saveLocalStamp();
-  await updateStampCount(stampCount);
-
   updateStampDisplay();
   updateRewardButtons();
+  await updateStampCount(stampCount);
 
   if (stampCount === 3) showNotification('🎉', 'コーヒー1杯無料ゲット！');
   else if (stampCount === 6) showNotification('🎉', 'カレー1杯無料ゲット！');
@@ -194,27 +226,20 @@ async function addStamp() {
 }
 
 async function redeemReward(type) {
-  if (type === 'coffee' && stampCount >= 3) stampCount -= 3;
-  if (type === 'curry'  && stampCount >= 6) stampCount -= 6;
+  const required = type === 'coffee' ? 3 : 6;
+  if (stampCount < required) return;
 
-  localStorage.setItem('route227_stamps', stampCount);
-  await updateStampCount(stampCount);
+  stampCount -= required;
   updateStampDisplay();
   updateRewardButtons();
+  await updateStampCount(stampCount);
   showNotification('交換完了', type === 'coffee' ? 'コーヒーと交換しました！' : 'カレーと交換しました！');
 }
 
-/* 9) フィード記事表示 */
+/* フィード記事表示 */
 async function renderArticles(category) {
-  const elements = getElements();
-  const articlesContainer = elements.articlesContainer;
-  
-  if (!articlesContainer) {
-    console.error('articlesContainer が見つかりません');
-    return;
-  }
-
-  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
+  const { articlesContainer } = getElements();
+  if (!articlesContainer) return;
 
   const list = [
     { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
@@ -222,30 +247,29 @@ async function renderArticles(category) {
     { url:'https://machico.mu/jump/ad/102236',      category:'ニュース', title:'Machico 102236',summary:'ニュース記事' },
     { url:'https://machico.mu/special/detail/2926', category:'ニュース', title:'Machico 2926',summary:'ニュース記事' }
   ];
-
   const targets = list.filter(a => category === 'all' || a.category === category);
 
   try {
     const cards = await Promise.all(targets.map(async a => {
       try {
         const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`);
-        if (!res.ok) throw new Error('API request failed');
+        if (!res.ok) throw new Error(`API request failed with status ${res.status}`);
         const d = await res.json();
         const doc = new DOMParser().parseFromString(d.contents, 'text/html');
         return { ...a, img: doc.querySelector("meta[property='og:image']")?.content || 'assets/placeholder.jpg' };
       } catch (e) {
         console.warn(`記事データの取得に失敗: ${a.url}`, e);
-        return { ...a, img: 'assets/placeholder.jpg' };
+        return { ...a, img: 'assets/placeholder.jpg' }; // フォールバック
       }
     }));
   
-    articlesContainer.innerHTML = '';
+    articlesContainer.innerHTML = ''; // 既存の内容をクリア
     cards.forEach(a => {
       const div = document.createElement('div');
       div.className = 'card article-card';
       div.innerHTML = `
         <a href="${a.url}" target="_blank" rel="noopener noreferrer">
-          <img src="${a.img}" alt="${a.title}のサムネイル">
+          <img src="${a.img}" alt="${a.title}のサムネイル" loading="lazy">
           <div class="card__body" aria-label="記事: ${a.title}">
             <span class="article-category">${a.category}</span>
             <h3 class="article-title">${a.title}</h3>
@@ -260,7 +284,7 @@ async function renderArticles(category) {
   }
 }
 
-/* 10) QRスキャナー */
+/* QRスキャナー */
 function initQRScanner() {
   const qrReader = document.getElementById('qr-reader');
   if (!qrReader) return;
@@ -270,28 +294,23 @@ function initQRScanner() {
   html5QrCode.start(
     { facingMode:'environment' },
     { fps:10, qrbox:{ width:250, height:250 } },
-    async text => {
-      if (html5QrCode.isScanning) {
-        await html5QrCode.stop();
-      }
+    async (text) => {
       if (text === appData.qrString) {
-        addStamp();
+        await addStamp();
       } else {
         showNotification('無効なQRコード', 'お店のQRコードをスキャンしてください。');
       }
-      closeModal(document.getElementById('qr-modal'));
+      closeAllModals();
     },
-    (errorMessage) => {
-      // パーシングエラーは無視
-    }
-  ).catch(()=>{
-    qrReader.innerHTML='<div class="status status--error">カメラの起動に失敗しました。ブラウザのカメラアクセスを許可してください。</div>';
+    (errorMessage) => { /* パーシングエラーは無視 */ }
+  ).catch(() => {
+    qrReader.innerHTML='<div class="status status--error">カメラの起動に失敗しました。</div>';
   });
 }
 
 function closeAllModals() {
   document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-  if (html5QrCode && html5QrCode.isScanning) {
+  if (html5QrCode && html5QrCode.getState() === 2) { // 2: SCANNING
     html5QrCode.stop().catch(err => console.error("QR Scanner stop failed", err));
   }
 }
@@ -300,7 +319,7 @@ function closeModal(m){
   if (m) m.classList.remove('active'); 
 }
 
-/* 11) イベントリスナー設定 */
+/* イベントリスナー設定 */
 function setupEventListeners() {
   if (eventBound) return;
   eventBound = true;
@@ -308,28 +327,15 @@ function setupEventListeners() {
   const elements = getElements();
 
   elements.navLinks.forEach(link => {
-    link.addEventListener('click', async () => {
+    link.addEventListener('click', () => {
       elements.navLinks.forEach(n => n.classList.remove('active'));
       link.classList.add('active');
       elements.sections.forEach(s => s.classList.remove('active'));
       const target = document.getElementById(link.dataset.section);
-      if (target) target.classList.add('active');
+      if(target) target.classList.add('active');
 
-      if (link.dataset.section === 'foodtruck-section') {
-        if (!globalUID) {
-          document.getElementById('login-modal')?.classList.add('active');
-          return;
-        }
-        const spinner = document.getElementById('stamp-spinner');
-        if (spinner) spinner.classList.remove('hidden');
-
-        try {
-          await syncStampFromDB(globalUID);
-        } finally {
-          if (spinner) spinner.classList.add('hidden');
-        }
-        updateStampDisplay();
-        updateRewardButtons();
+      if (link.dataset.section === 'foodtruck-section' && !globalUID) {
+          elements.loginModal?.classList.add('active');
       }
     });
   });
@@ -345,8 +351,8 @@ function setupEventListeners() {
   if (elements.scanQrButton) {
     elements.scanQrButton.addEventListener('click', () => {
       if (!globalUID) {
-        showNotification('要ログイン', 'QRコードをスキャンするにはログインが必要です。');
-        document.getElementById('login-modal')?.classList.add('active');
+        showNotification('要ログイン', 'QRスキャンにはログインが必要です。');
+        elements.loginModal?.classList.add('active');
         return;
       }
       document.getElementById('qr-modal')?.classList.add('active');
@@ -358,45 +364,10 @@ function setupEventListeners() {
     btn.addEventListener('click', closeAllModals)
   );
   
-  const closeNotificationBtn = document.querySelector('.close-notification');
-  if (closeNotificationBtn) {
-    closeNotificationBtn.addEventListener('click', () => closeModal(elements.notificationModal));
-  }
+  document.querySelector('.close-notification')?.addEventListener('click', () => 
+    closeModal(elements.notificationModal)
+  );
 
-  if (elements.coffeeRewardButton) {
-    elements.coffeeRewardButton.addEventListener('click', () => redeemReward('coffee'));
-  }
-  if (elements.curryRewardButton) {
-    elements.curryRewardButton.addEventListener('click', () => redeemReward('curry'));
-  }
+  elements.coffeeRewardButton?.addEventListener('click', () => redeemReward('coffee'));
+  elements.curryRewardButton?.addEventListener('click', () => redeemReward('curry'));
 }
-
-/* 12) アプリ起動 */
-document.addEventListener('DOMContentLoaded', () => {
-  // 最初に一度だけ、すべてのイベントリスナーを設定する
-  setupEventListeners();
-
-  // ログインフォームの送信処理
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const { data, error } = await db.auth.signInWithOtp({
-        email: email.trim(),
-        options: { 
-          emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
-          shouldCreateUser: true
-        }
-      });
-
-      const msg = document.getElementById('login-message');
-      if (error) {
-        msg.textContent = '❌ メール送信に失敗しました';
-        console.error(error);
-      } else {
-        msg.textContent = '✅ メールを確認してください！';
-      }
-    });
-  }
-});
