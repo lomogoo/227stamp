@@ -1,10 +1,3 @@
-# 修正版 app.js
-
-以下は、ログイン後のリロード時にフィード記事が表示されなくなる問題を修正したJavaScriptコードです：
-
-```javascript
-/* 修正版 app.js */
-
 /* 1) Supabase 初期化 */
 const db = window.supabase.createClient(
   'https://hccairtzksnnqdujalgv.supabase.co',
@@ -417,22 +410,3 @@ async function initApp() {
 
 /* 13) アプリ起動 */
 document.addEventListener('DOMContentLoaded', initApp);
-```
-
-## 主な修正点
-
-1. **onAuthStateChange内でフィード記事を再表示**
-   - ログイン状態変更時に `renderArticles('all')` を呼び出し
-   - カテゴリタブのアクティブ状態も復元
-
-2. **DOM要素の動的取得**
-   - `getElements()` 関数で必要な時に要素を取得
-   - null チェックを追加してエラーを防止
-
-3. **ログインフォームのイベントリスナー修正**
-   - DOMContentLoaded内で安全にイベントリスナーを設定
-
-4. **initApp内でフィード記事を確実に表示**
-   - アプリ初期化時に必ず `renderArticles('all')` を実行
-
-これらの修正により、ログイン後のリロード時にもフィード記事とボタンが正常に動作するようになります。
