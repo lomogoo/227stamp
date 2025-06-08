@@ -44,10 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = document.getElementById('email').value;
       const { data, error } = await db.auth.signInWithOtp({
         email: email.trim(),
-        options: {
-          emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
-          shouldCreateUser: true
-        }
+        options: { emailRedirectTo: 'https://lomogoo.github.io/227stamp/', shouldCreateUser: true }
       });
       const msg = document.getElementById('login-message');
       if (error) {
@@ -59,24 +56,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   db.auth.onAuthStateChange(async (event, session) => {
+    // まずローディング表示
     const { articlesContainer, loginModal } = getElements();
     if (articlesContainer) articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
+    
+    // Promise.allでユーザー情報取得と記事取得を並行して実行
+    try {
+      if (session && session.user) {
+        // --- ログイン状態 ---
+        globalUID = session.user.id;
+        loginModal?.classList.remove('active');
+        
+        // ユーザー情報取得と記事取得を並行実行
+        const [fetchedStampCount, articlesResult] = await Promise.all([
+          fetchOrCreateUserRow(globalUID),
+          renderArticles('all')
+        ]);
+        stampCount = fetchedStampCount;
+        localStorage.setItem('route227_stamps', stampCount.toString());
 
-    if (session && session.user) {
-      globalUID = session.user.id;
-      stampCount = await fetchOrCreateUserRow(globalUID); // ★ここでデータ取得
-      localStorage.setItem('route227_stamps', stampCount.toString());
-      loginModal?.classList.remove('active');
-    } else {
-      globalUID = null;
-      stampCount = 0;
-      localStorage.removeItem('route227_stamps');
+      } else {
+        // --- ログアウト状態 ---
+        globalUID = null;
+        stampCount = 0;
+        localStorage.removeItem('route227_stamps');
+        await renderArticles('all');
+      }
+    } catch (error) {
+      console.error("認証状態の処理中にエラーが発生しました:", error);
+      showNotification('エラー', 'データの読み込みに失敗しました。');
     }
 
+    // すべてのデータ取得が終わった後にUIを更新
     updateStampDisplay();
     updateRewardButtons();
-    await renderArticles('all'); // ★ここで記事取得
-    
     getElements().categoryTabs.forEach(tab => {
       tab.classList.toggle('active', tab.dataset.category === 'all');
     });
@@ -89,30 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchOrCreateUserRow(uid) {
   try {
-    const { data, error } = await db
-      .from('users')
-      .select('stamp_count')
-      .eq('supabase_uid', uid)
-      .single(); // maybeSingle()からsingle()に変更して、行がない場合にエラーを発生させる
-
+    const { data, error } = await db.from('users').select('stamp_count').eq('supabase_uid', uid).single();
     if (error) {
-      // 行が見つからないエラー(PGRST116)の場合、新規作成フローに進む
-      if (error.code === 'PGRST116') {
-        const { data: inserted, error: iErr } = await db
-          .from('users')
-          .insert([{ supabase_uid: uid, stamp_count: 0 }])
-          .select()
-          .single();
-        if (iErr) throw iErr; // INSERT時のエラーは投げる
+      if (error.code === 'PGRST116') { // 行が見つからない
+        const { data: inserted, error: iErr } = await db.from('users').insert([{ supabase_uid: uid, stamp_count: 0 }]).select().single();
+        if (iErr) throw iErr;
         return inserted.stamp_count;
       }
-      throw error; // その他のDBエラーは投げる
+      throw error;
     }
     return data ? data.stamp_count : 0;
   } catch (err) {
     console.error('[fetchOrCreateUserRow] Error:', err);
-    // ★ユーザーにエラーを通知
-    showNotification('エラー', 'ユーザー情報の取得に失敗しました。RLSの設定を確認してください。');
+    showNotification('エラー', 'スタンプ情報の取得に失敗しました。RLSポリシーを確認してください。');
     return 0; // エラー時は0を返す
   }
 }
@@ -173,7 +175,7 @@ async function redeemReward(type) {
 async function renderArticles(category) {
   const { articlesContainer } = getElements();
   if (!articlesContainer) return;
-  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
+  // この関数が呼ばれる前にローディング表示はされているので、ここでは表示しない
   const list = [
     { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
     { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'Machico 2704',summary:'イベント記事' },
@@ -202,8 +204,8 @@ async function renderArticles(category) {
     });
   } catch (error) {
     articlesContainer.innerHTML = '<div class="status status--error">記事の読み込みに失敗しました。</div>';
-    // ★ユーザーにエラーを通知
-    showNotification('エラー', '記事フィードの取得に失敗しました。');
+    // Promise.allでエラーを捕捉するので、ここでは通知しない
+    throw error; // エラーを投げてPromise.allのcatchで処理させる
   }
 }
 
@@ -251,6 +253,9 @@ function setupEventListeners() {
     tab.addEventListener('click', () => {
       elements.categoryTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
+      // ここではローディング表示を挟む
+      const { articlesContainer } = getElements();
+      if(articlesContainer) articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
       renderArticles(tab.dataset.category);
     });
   });
