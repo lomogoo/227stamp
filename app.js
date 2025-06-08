@@ -32,30 +32,18 @@ function getElements() {
   };
 }
 
-/* 4) 認証状態変更のハンドラー - ★修正箇所★ */
+/* 4) 認証状態変更のハンドラー (アプリケーションのメインコントローラー) */
 db.auth.onAuthStateChange(async (event, session) => {
   if (session && session.user) {
-    // ログイン状態の場合
+    // ログイン状態の場合 (ページリロード時も含む)
     globalUID = session.user.id;
     stampCount = await fetchOrCreateUserRow(globalUID);
+    localStorage.setItem('route227_stamps', stampCount.toString());
 
     // UIを更新
     updateStampDisplay();
     updateRewardButtons();
     document.getElementById('login-modal')?.classList.remove('active');
-
-    // ★重要な修正：フィード記事を再表示★
-    await renderArticles('all');
-    
-    // ★重要な修正：カテゴリタブのアクティブ状態を復元★
-    const elements = getElements();
-    elements.categoryTabs.forEach(tab => {
-      if (tab.dataset.category === 'all') {
-        tab.classList.add('active');
-      } else {
-        tab.classList.remove('active');
-      }
-    });
 
     // ログインフォームを削除
     const loginForm = document.getElementById('login-form');
@@ -66,41 +54,23 @@ db.auth.onAuthStateChange(async (event, session) => {
     // ログアウト状態の場合
     globalUID = null;
     stampCount = 0;
+    localStorage.removeItem('route227_stamps');
+    
+    // UIをリセット
     updateStampDisplay();
     updateRewardButtons();
-    
-    // ★修正：ログアウト時もフィード記事を表示★
-    await renderArticles('all');
   }
+
+  // 認証状態が確定した後に、必ずフィード記事を表示する
+  await renderArticles('all');
+  
+  // カテゴリタブの状態を「ALL」にリセットする
+  const elements = getElements();
+  elements.categoryTabs.forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.category === 'all');
+  });
 });
 
-/* 5) ログインフォームのイベントハンドラー - ★修正箇所★ */
-document.addEventListener('DOMContentLoaded', () => {
-  const loginForm = document.getElementById('login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const { data, error } = await db.auth.signInWithOtp({
-        email: email.trim(),
-        options: { 
-          emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
-          shouldCreateUser: true
-        }
-      });
-
-      console.log('[Auth] signInWithOtp →', { data, error });
-      
-      const msg = document.getElementById('login-message');
-      if (error) {
-        msg.textContent = '❌ メール送信に失敗しました';
-        console.error(error);
-      } else {
-        msg.textContent = '✅ メールを確認してください！';
-      }
-    });
-  }
-});
 
 /* 6) ユーザー行の取得/作成 */
 async function fetchOrCreateUserRow(uid) {
@@ -140,8 +110,7 @@ const appData = {
 
 /* 8) 共通ユーティリティ関数 */
 async function updateStampCount(newCount) {
-  const { data: { session } } = await db.auth.getSession();
-  const uid = session?.user?.id || null;
+  if (!globalUID) return; // UIDがない場合は更新しない
 
   const { error } = await db
     .from('users')
@@ -206,7 +175,8 @@ function showNotification(title, msg) {
 
 async function addStamp() {
   if (!globalUID) {
-    showNotification('要ログイン', '先にログインしてください');
+    showNotification('要ログイン', 'スタンプを押すにはログインが必要です。');
+    document.getElementById('login-modal')?.classList.add('active');
     return;
   }
   if (stampCount >= 6) return;
@@ -231,10 +201,10 @@ async function redeemReward(type) {
   await updateStampCount(stampCount);
   updateStampDisplay();
   updateRewardButtons();
-  showNotification('交換完了', type === 'coffee' ? 'コーヒー交換！' : 'カレー交換！');
+  showNotification('交換完了', type === 'coffee' ? 'コーヒーと交換しました！' : 'カレーと交換しました！');
 }
 
-/* 9) フィード記事表示 - ★修正箇所★ */
+/* 9) フィード記事表示 */
 async function renderArticles(category) {
   const elements = getElements();
   const articlesContainer = elements.articlesContainer;
@@ -244,6 +214,8 @@ async function renderArticles(category) {
     return;
   }
 
+  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
+
   const list = [
     { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
     { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'Machico 2704',summary:'イベント記事' },
@@ -252,39 +224,46 @@ async function renderArticles(category) {
   ];
 
   const targets = list.filter(a => category === 'all' || a.category === category);
-  articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
 
-  const cards = await Promise.all(targets.map(async a => {
-    try {
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`);
-      const d = await res.json();
-      const doc = new DOMParser().parseFromString(d.contents, 'text/html');
-      return { ...a, img: doc.querySelector("meta[property='og:image']")?.content || 'assets/placeholder.jpg' };
-    } catch {
-      return { ...a, img: 'assets/placeholder.jpg' };
-    }
-  }));
-
-  articlesContainer.innerHTML = '';
-  cards.forEach(a => {
-    const div = document.createElement('div');
-    div.className = 'card article-card';
-    div.innerHTML = `
-      <a href="${a.url}" target="_blank" rel="noopener noreferrer">
-        <img src="${a.img}" alt="${a.title}のサムネイル">
-        <div class="card__body" aria-label="記事: ${a.title}">
-          <span class="article-category">${a.category}</span>
-          <h3 class="article-title">${a.title}</h3>
-          <p class="article-excerpt">${a.summary}</p>
-        </div>
-      </a>`;
-    articlesContainer.appendChild(div);
-  });
+  try {
+    const cards = await Promise.all(targets.map(async a => {
+      try {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`);
+        if (!res.ok) throw new Error('API request failed');
+        const d = await res.json();
+        const doc = new DOMParser().parseFromString(d.contents, 'text/html');
+        return { ...a, img: doc.querySelector("meta[property='og:image']")?.content || 'assets/placeholder.jpg' };
+      } catch (e) {
+        console.warn(`記事データの取得に失敗: ${a.url}`, e);
+        return { ...a, img: 'assets/placeholder.jpg' };
+      }
+    }));
+  
+    articlesContainer.innerHTML = '';
+    cards.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'card article-card';
+      div.innerHTML = `
+        <a href="${a.url}" target="_blank" rel="noopener noreferrer">
+          <img src="${a.img}" alt="${a.title}のサムネイル">
+          <div class="card__body" aria-label="記事: ${a.title}">
+            <span class="article-category">${a.category}</span>
+            <h3 class="article-title">${a.title}</h3>
+            <p class="article-excerpt">${a.summary}</p>
+          </div>
+        </a>`;
+      articlesContainer.appendChild(div);
+    });
+  } catch (error) {
+    articlesContainer.innerHTML = '<div class="status status--error">記事の読み込みに失敗しました。</div>';
+    console.error('Failed to render articles:', error);
+  }
 }
 
 /* 10) QRスキャナー */
 function initQRScanner() {
   const qrReader = document.getElementById('qr-reader');
+  if (!qrReader) return;
   qrReader.innerHTML = '';
   html5QrCode = new Html5Qrcode('qr-reader');
 
@@ -292,33 +271,42 @@ function initQRScanner() {
     { facingMode:'environment' },
     { fps:10, qrbox:{ width:250, height:250 } },
     async text => {
-      await html5QrCode.stop(); 
-      html5QrCode.clear();
-      if (text === appData.qrString) addStamp();
-      else showNotification('無効なQR', '読み取れませんでした');
+      if (html5QrCode.isScanning) {
+        await html5QrCode.stop();
+      }
+      if (text === appData.qrString) {
+        addStamp();
+      } else {
+        showNotification('無効なQRコード', 'お店のQRコードをスキャンしてください。');
+      }
       closeModal(document.getElementById('qr-modal'));
     },
-    () => {}
-  ).catch(()=>{qrReader.innerHTML='<div class="status status--error">カメラエラー</div>';});
+    (errorMessage) => {
+      // パーシングエラーは無視
+    }
+  ).catch(()=>{
+    qrReader.innerHTML='<div class="status status--error">カメラの起動に失敗しました。ブラウザのカメラアクセスを許可してください。</div>';
+  });
 }
 
 function closeAllModals() {
   document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-  if (html5QrCode) html5QrCode.stop().catch(()=>{}).then(()=>html5QrCode.clear());
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.stop().catch(err => console.error("QR Scanner stop failed", err));
+  }
 }
 
 function closeModal(m){ 
   if (m) m.classList.remove('active'); 
 }
 
-/* 11) イベントリスナー設定 - ★修正箇所★ */
+/* 11) イベントリスナー設定 */
 function setupEventListeners() {
   if (eventBound) return;
   eventBound = true;
 
   const elements = getElements();
 
-  // ナビゲーションリンク
   elements.navLinks.forEach(link => {
     link.addEventListener('click', async () => {
       elements.navLinks.forEach(n => n.classList.remove('active'));
@@ -343,37 +331,38 @@ function setupEventListeners() {
         updateStampDisplay();
         updateRewardButtons();
       }
-    }, { passive:true });
+    });
   });
 
-  // カテゴリタブ
   elements.categoryTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.categoryTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       renderArticles(tab.dataset.category);
-    }, { passive:true });
+    });
   });
 
-  // QRスキャンボタン
   if (elements.scanQrButton) {
     elements.scanQrButton.addEventListener('click', () => {
+      if (!globalUID) {
+        showNotification('要ログイン', 'QRコードをスキャンするにはログインが必要です。');
+        document.getElementById('login-modal')?.classList.add('active');
+        return;
+      }
       document.getElementById('qr-modal')?.classList.add('active');
       initQRScanner();
     });
   }
 
-  // モーダル閉じるボタン
   document.querySelectorAll('.close-modal').forEach(btn =>
-    btn.addEventListener('click', closeAllModals, { passive:true })
+    btn.addEventListener('click', closeAllModals)
   );
   
   const closeNotificationBtn = document.querySelector('.close-notification');
   if (closeNotificationBtn) {
-    closeNotificationBtn.addEventListener('click', () => closeModal(elements.notificationModal), { passive:true });
+    closeNotificationBtn.addEventListener('click', () => closeModal(elements.notificationModal));
   }
 
-  // 報酬ボタン
   if (elements.coffeeRewardButton) {
     elements.coffeeRewardButton.addEventListener('click', () => redeemReward('coffee'));
   }
@@ -382,31 +371,32 @@ function setupEventListeners() {
   }
 }
 
-/* 12) アプリ初期化 - ★修正箇所★ */
-async function initApp() {
-  // セッション取得
-  const { data: { session } } = await db.auth.getSession();
-  globalUID = session?.user?.id || null;
-
-  if (globalUID) {
-    // ログイン済みの場合
-    document.getElementById('login-modal')?.classList.remove('active');
-    stampCount = await fetchOrCreateUserRow(globalUID);
-    localStorage.setItem('route227_stamps', stampCount.toString());
-  } else {
-    stampCount = 0;
-  }
-
-  // UI更新
-  updateStampDisplay();
-  updateRewardButtons();
-
-  // ★重要：フィード記事を表示★
-  await renderArticles('all');
-  
-  // イベントリスナー設定
+/* 12) アプリ起動 */
+document.addEventListener('DOMContentLoaded', () => {
+  // 最初に一度だけ、すべてのイベントリスナーを設定する
   setupEventListeners();
-}
 
-/* 13) アプリ起動 */
-document.addEventListener('DOMContentLoaded', initApp);
+  // ログインフォームの送信処理
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const { data, error } = await db.auth.signInWithOtp({
+        email: email.trim(),
+        options: { 
+          emailRedirectTo: 'https://lomogoo.github.io/227stamp/',
+          shouldCreateUser: true
+        }
+      });
+
+      const msg = document.getElementById('login-message');
+      if (error) {
+        msg.textContent = '❌ メール送信に失敗しました';
+        console.error(error);
+      } else {
+        msg.textContent = '✅ メールを確認してください！';
+      }
+    });
+  }
+});
