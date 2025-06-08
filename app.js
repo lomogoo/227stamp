@@ -56,19 +56,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   db.auth.onAuthStateChange(async (event, session) => {
-    // まずローディング表示
     const { articlesContainer, loginModal } = getElements();
     if (articlesContainer) articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
     
-    // Promise.allでユーザー情報取得と記事取得を並行して実行
     try {
       if (session && session.user) {
-        // --- ログイン状態 ---
         globalUID = session.user.id;
         loginModal?.classList.remove('active');
         
-        // ユーザー情報取得と記事取得を並行実行
-        const [fetchedStampCount, articlesResult] = await Promise.all([
+        const [fetchedStampCount] = await Promise.all([
           fetchOrCreateUserRow(globalUID),
           renderArticles('all')
         ]);
@@ -76,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('route227_stamps', stampCount.toString());
 
       } else {
-        // --- ログアウト状態 ---
         globalUID = null;
         stampCount = 0;
         localStorage.removeItem('route227_stamps');
@@ -87,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
       showNotification('エラー', 'データの読み込みに失敗しました。');
     }
 
-    // すべてのデータ取得が終わった後にUIを更新
     updateStampDisplay();
     updateRewardButtons();
     getElements().categoryTabs.forEach(tab => {
@@ -104,7 +98,7 @@ async function fetchOrCreateUserRow(uid) {
   try {
     const { data, error } = await db.from('users').select('stamp_count').eq('supabase_uid', uid).single();
     if (error) {
-      if (error.code === 'PGRST116') { // 行が見つからない
+      if (error.code === 'PGRST116') {
         const { data: inserted, error: iErr } = await db.from('users').insert([{ supabase_uid: uid, stamp_count: 0 }]).select().single();
         if (iErr) throw iErr;
         return inserted.stamp_count;
@@ -114,19 +108,20 @@ async function fetchOrCreateUserRow(uid) {
     return data ? data.stamp_count : 0;
   } catch (err) {
     console.error('[fetchOrCreateUserRow] Error:', err);
-    showNotification('エラー', 'スタンプ情報の取得に失敗しました。RLSポリシーを確認してください。');
-    return 0; // エラー時は0を返す
+    showNotification('エラー', 'スタンプ情報の取得に失敗しました。');
+    return 0;
   }
 }
 
-const appData = {
-  rewards: [{ type: "coffee", stampsRequired: 3, name: "コーヒー1杯無料" }, { type: "curry",  stampsRequired: 6, name: "カレー1杯無料" }],
-  qrString: "ROUTE227_STAMP_2025"
-};
-
 async function updateStampCount(newCount) {
   if (!globalUID) return;
-  await db.from('users').update({ stamp_count: newCount, updated_at: new Date().toISOString() }).eq('supabase_uid', globalUID);
+  const { data, error } = await db.from('users').update({ stamp_count: newCount, updated_at: new Date().toISOString() }).eq('supabase_uid', globalUID).select().single();
+  if (error) {
+    console.error('スタンプ更新エラー:', error);
+    showNotification('エラー', 'スタンプの保存に失敗しました。');
+    throw error;
+  }
+  return data;
 }
 
 function updateStampDisplay() {
@@ -152,30 +147,81 @@ async function addStamp() {
     getElements().loginModal?.classList.add('active');
     return;
   }
-  if (stampCount >= 6) return;
-  stampCount++;
-  updateStampDisplay();
-  updateRewardButtons();
-  await updateStampCount(stampCount);
-  if (stampCount === 3) showNotification('🎉', 'コーヒー1杯無料！');
-  else if (stampCount === 6) showNotification('🎉', 'カレー1杯無料！');
-  else showNotification('スタンプ獲得', `現在 ${stampCount} 個`);
+  try {
+    const currentCount = await fetchOrCreateUserRow(globalUID);
+    if (currentCount >= 6) {
+      showNotification('コンプリート！', 'スタンプが6個たまりました！');
+      return;
+    }
+    const newCount = currentCount + 1;
+    const updatedData = await updateStampCount(newCount);
+    
+    stampCount = updatedData.stamp_count;
+    updateStampDisplay();
+    updateRewardButtons();
+
+    if (stampCount === 3) showNotification('🎉', 'コーヒー1杯無料！');
+    else if (stampCount === 6) showNotification('🎉', 'カレー1杯無料！');
+    else showNotification('スタンプ獲得', `現在 ${stampCount} 個`);
+  } catch (error) {
+    showNotification('エラー', 'スタンプの追加に失敗しました。');
+  }
 }
 
 async function redeemReward(type) {
-  const required = type === 'coffee' ? 3 : 6;
-  if (stampCount < required) return;
-  stampCount -= required;
-  updateStampDisplay();
-  updateRewardButtons();
-  await updateStampCount(stampCount);
-  showNotification('交換完了', `${type === 'coffee' ? 'コーヒー' : 'カレー'}と交換！`);
+  if (!globalUID) return;
+  try {
+    const currentCount = await fetchOrCreateUserRow(globalUID);
+    const required = type === 'coffee' ? 3 : 6;
+    if (currentCount < required) return;
+
+    const newCount = currentCount - required;
+    const updatedData = await updateStampCount(newCount);
+    
+    stampCount = updatedData.stamp_count;
+    updateStampDisplay();
+    updateRewardButtons();
+
+    showNotification('交換完了', `${type === 'coffee' ? 'コーヒー' : 'カレー'}と交換しました！`);
+  } catch (error) {
+    showNotification('エラー', '特典の交換に失敗しました。');
+  }
 }
+
+function initQRScanner() {
+  let isProcessing = false; // ★連続スキャン防止フラグ
+  const qrReader = document.getElementById('qr-reader');
+  if (!qrReader) return;
+
+  html5QrCode = new Html5Qrcode('qr-reader');
+  html5QrCode.start({ facingMode:'environment' }, { fps:10, qrbox:{ width:250, height:250 } },
+    async (text) => {
+      if (isProcessing) return; // ★処理中は新しいスキャンを無視
+      isProcessing = true;
+
+      try {
+        if (text === "ROUTE227_STAMP_2025") {
+          await addStamp();
+        } else {
+          showNotification('無効なQR', 'お店のQRコードではありません。');
+        }
+      } finally {
+        closeAllModals();
+      }
+    },
+    () => {}
+  ).catch(() => qrReader.innerHTML='<div class="status status--error">カメラの起動に失敗しました。</div>');
+}
+
+const appData = {
+  rewards: [{ type: "coffee", stampsRequired: 3, name: "コーヒー1杯無料" }, { type: "curry",  stampsRequired: 6, name: "カレー1杯無料" }],
+  qrString: "ROUTE227_STAMP_2025"
+};
 
 async function renderArticles(category) {
   const { articlesContainer } = getElements();
   if (!articlesContainer) return;
-  // この関数が呼ばれる前にローディング表示はされているので、ここでは表示しない
+
   const list = [
     { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
     { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'Machico 2704',summary:'イベント記事' },
@@ -204,23 +250,8 @@ async function renderArticles(category) {
     });
   } catch (error) {
     articlesContainer.innerHTML = '<div class="status status--error">記事の読み込みに失敗しました。</div>';
-    // Promise.allでエラーを捕捉するので、ここでは通知しない
-    throw error; // エラーを投げてPromise.allのcatchで処理させる
+    throw error;
   }
-}
-
-function initQRScanner() {
-  const qrReader = document.getElementById('qr-reader');
-  if (!qrReader) return;
-  html5QrCode = new Html5Qrcode('qr-reader');
-  html5QrCode.start({ facingMode:'environment' }, { fps:10, qrbox:{ width:250, height:250 } },
-    async (text) => {
-      if (text === appData.qrString) await addStamp();
-      else showNotification('無効なQR', 'お店のQRコードではありません。');
-      closeAllModals();
-    },
-    () => {}
-  ).catch(() => qrReader.innerHTML='<div class="status status--error">カメラの起動に失敗しました。</div>');
 }
 
 function closeAllModals() {
@@ -253,7 +284,6 @@ function setupEventListeners() {
     tab.addEventListener('click', () => {
       elements.categoryTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      // ここではローディング表示を挟む
       const { articlesContainer } = getElements();
       if(articlesContainer) articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
       renderArticles(tab.dataset.category);
