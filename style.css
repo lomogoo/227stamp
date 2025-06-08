@@ -1101,28 +1101,48 @@ body {
 /* (既存のCSSはすべてそのまま) */
 /* ... */
 
-/* ★ここから末尾に追加 */
+/* ★ここから末尾に追加 (既存の.app-loaderは置き換え) */
 
-/* App Loader Styles */
-.app-loader {
+/* App Loader Styles - 改良版 */
+.app-loader.active {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: var(--color-background);
+  right: 0;
+  bottom: 0;
+  background-color: rgba(252, 252, 249, 0.9); /* 背景色を少し透過させる */
   z-index: 10000;
   display: flex;
   justify-content: center;
   align-items: center;
   opacity: 1;
-  transition: opacity 0.3s ease-in-out;
-  pointer-events: auto;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px);
 }
-
-.app-loader:not(.active) {
+.app-loader {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Error Display Styles */
+.error-display {
+  padding: 24px;
+  text-align: center;
+  display: none; /* 通常は非表示 */
+}
+.error-display h2 {
+  color: var(--color-error);
+  margin-bottom: 16px;
+}
+.error-display pre {
+  background-color: #f0f0f0;
+  padding: 16px;
+  border-radius: 8px;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-all;
+  text-align: left;
+  font-size: 12px;
 }
 
 
@@ -1141,8 +1161,4 @@ body {
 
 #user-status .btn--outline:hover {
   background: rgba(255, 255, 255, 0.1);
-}
-
-.stamp-added {
-  animation: stampAdded 0.5s var(--ease-standard);
 }
