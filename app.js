@@ -32,6 +32,24 @@ function getElements() {
   };
 }
 
+/* ★デバッグ用：致命的なエラーを画面に表示する関数 */
+function showFatalError(title, error) {
+  const appLoader = document.getElementById('app-loader');
+  const appRoot = document.getElementById('app-root');
+  const errorDisplay = document.getElementById('error-display');
+
+  if (appLoader) appLoader.classList.remove('active');
+  if (appRoot) appRoot.style.display = 'none';
+  if (errorDisplay) {
+    errorDisplay.style.display = 'block';
+    errorDisplay.innerHTML = `
+      <h2>${title}</h2>
+      <p>問題の解決には、以下のエラー情報が必要です。</p>
+      <pre>${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}</pre>
+    `;
+  }
+}
+
 /* ==================================================================== */
 /* アプリケーションのメイン処理                                        */
 /* ==================================================================== */
@@ -58,54 +76,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   db.auth.onAuthStateChange(async (event, session) => {
-    const { articlesContainer, loginModal, appLoader, userStatus } = getElements();
-    
+    const appLoader = document.getElementById('app-loader');
+    const userStatus = document.getElementById('user-status');
+    appLoader?.classList.add('active'); // 処理開始時に必ずローダーを表示
+
     try {
       if (session && session.user) {
         globalUID = session.user.id;
-        loginModal?.classList.remove('active');
         
-        const [fetchedStampCount] = await Promise.all([
-          fetchOrCreateUserRow(globalUID),
-          renderArticles('all')
-        ]);
-        stampCount = fetchedStampCount;
+        // ★処理を一つずつ順番に実行して原因を特定
+        stampCount = await fetchOrCreateUserRow(globalUID);
+        updateStampDisplay();
+        updateRewardButtons();
+        await renderArticles('all');
+
         localStorage.setItem('route227_stamps', stampCount.toString());
+        document.getElementById('login-modal')?.classList.remove('active');
 
       } else {
         globalUID = null;
         stampCount = 0;
         localStorage.removeItem('route227_stamps');
+        updateStampDisplay();
+        updateRewardButtons();
         await renderArticles('all');
       }
-    } catch (error) {
-      console.error("認証状態の処理中にエラーが発生しました:", error);
-      showNotification('エラー', 'データの読み込みに失敗しました。');
-    }
 
-    // すべてのデータ取得が終わった後にUIを更新
-    updateStampDisplay();
-    updateRewardButtons();
-    getElements().categoryTabs.forEach(tab => {
-      tab.classList.toggle('active', tab.dataset.category === 'all');
-    });
-
-    // ★ログイン状態を表示
-    if (userStatus) {
-      if (session && session.user) {
-        userStatus.innerHTML = '<button id="logout-button" class="btn btn--sm btn--outline">ログアウト</button>';
-        document.getElementById('logout-button').addEventListener('click', async () => {
-          appLoader?.classList.add('active'); // ログアウト中もローダー表示
-          await db.auth.signOut();
-          // onAuthStateChangeが再度呼ばれるのでローダーはそこで消える
-        });
-      } else {
-        userStatus.innerHTML = '';
+      // ログイン状態を表示
+      if (userStatus) {
+        if (session && session.user) {
+          userStatus.innerHTML = '<button id="logout-button" class="btn btn--sm btn--outline">ログアウト</button>';
+          document.getElementById('logout-button').addEventListener('click', () => db.auth.signOut());
+        } else {
+          userStatus.innerHTML = '';
+        }
       }
-    }
 
-    // ★最後にアプリ全体のローディングを解除
-    appLoader?.classList.remove('active');
+      // すべて成功した場合のみローダーを解除
+      appLoader?.classList.remove('active');
+
+    } catch (error) {
+      // ★何らかのエラーが発生した場合、ここで捕捉して画面に表示
+      showFatalError('アプリケーションの起動中にエラーが発生しました', error);
+    }
   });
 });
 
@@ -114,27 +127,39 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ==================================================================== */
 
 async function fetchOrCreateUserRow(uid) {
+  // ★ロジックを簡素化してエラーの原因を特定しやすくする
   try {
-    const { data, error } = await db.from('users').select('stamp_count').eq('supabase_uid', uid).single();
+    // maybeSingle() を使い、0件でもエラーにならないようにする
+    const { data, error } = await db.from('users').select('stamp_count').eq('supabase_uid', uid).maybeSingle();
+
+    // 通信エラーやRLS以外の予期せぬエラーを捕捉
     if (error) {
-      if (error.code === 'PGRST116') {
-        const { data: inserted, error: iErr } = await db.from('users').insert([{ supabase_uid: uid, stamp_count: 0 }]).select().single();
-        if (iErr) throw iErr;
-        return inserted.stamp_count;
-      }
       throw error;
     }
-    return data ? data.stamp_count : 0;
+
+    // データがあればその数を返す
+    if (data) {
+      return data.stamp_count;
+    }
+
+    // データがなければ新規作成
+    const { data: inserted, error: insertError } = await db.from('users').insert([{ supabase_uid: uid, stamp_count: 0 }]).select().single();
+    if (insertError) {
+      throw insertError;
+    }
+    return inserted.stamp_count;
+
   } catch (err) {
-    console.error('[fetchOrCreateUserRow] Error:', err);
-    showNotification('エラー', 'スタンプ情報の取得に失敗しました。');
-    return 0;
+    // この関数で発生したすべてのエラーを上位に投げて、メイン処理で表示させる
+    console.error('[fetchOrCreateUserRow] が失敗しました:', err);
+    throw err;
   }
 }
 
+// ... (他のヘルパー関数は前回と同じものでOKですが、念のため全文掲載します) ...
 async function updateStampCount(newCount) {
-  if (!globalUID) return;
-  const { data, error } = await db.from('users').update({ stamp_count: newCount, updated_at: new Date().toISOString() }).eq('supabase_uid', globalUID).select().single();
+  if (!globalUID) throw new Error("Not logged in");
+  const { data, error } = await db.from('users').update({ stamp_count: newCount }).eq('supabase_uid', globalUID).select().single();
   if (error) {
     console.error('スタンプ更新エラー:', error);
     showNotification('エラー', 'スタンプの保存に失敗しました。');
