@@ -13,133 +13,95 @@
     <div class="loading-spinner"></div>
   </div>
 
-  <header class="app-header">
-    <div class="container header-container">
-      <h1 class="app-title">⛰️Route227🚚</h1>
-      <div id="user-status"></div>
-    </div>
-  </header>
+  <div id="error-display" class="error-display"></div>
 
-  <main class="app-content">
-
-    <section id="feed-section" class="section active">
-      <div class="container">
-        <div class="category-tabs">
-          <button class="category-tab active" data-category="all">ALL</button>
-          <button class="category-tab" data-category="イベント">イベント</button>
-          <button class="category-tab" data-category="お店">お店</button>
-          <button class="category-tab" data-category="ニュース">ニュース</button>
-        </div>
-        
-        <div class="articles-container" id="articles-container">
-          </div>
+  <div id="app-root">
+    <header class="app-header">
+      <div class="container header-container">
+        <h1 class="app-title">⛰️Route227🚚</h1>
+        <div id="user-status"></div>
       </div>
-    </section>
+    </header>
 
-    <section id="foodtruck-section" class="section">
-      <div class="container">
-        <div class="card stamp-card">
-          <div id="stamp-spinner" class="loading-spinner hidden"></div>
-          <div class="card__header">
-            <h2>Route227 スタンプカード</h2>
+    <main class="app-content">
+      <section id="feed-section" class="section active">
+        <div class="container">
+          <div class="category-tabs">
+            <button class="category-tab active" data-category="all">ALL</button>
+            <button class="category-tab" data-category="イベント">イベント</button>
+            <button class="category-tab" data-category="お店">お店</button>
+            <button class="category-tab" data-category="ニュース">ニュース</button>
           </div>
-          <div class="card__body">
-            <div class="stamp-container">
-              <div class="stamp-grid">
-                <div class="stamp" data-stamp-id="1"></div>
-                <div class="stamp" data-stamp-id="2"></div>
-                <div class="stamp" data-stamp-id="3"></div>
-                <div class="stamp" data-stamp-id="4"></div>
-                <div class="stamp" data-stamp-id="5"></div>
-                <div class="stamp" data-stamp-id="6"></div>
+          <div class="articles-container" id="articles-container"></div>
+        </div>
+      </section>
+
+      <section id="foodtruck-section" class="section">
+        <div class="container">
+          <div class="card stamp-card">
+            <div id="stamp-spinner" class="loading-spinner hidden"></div>
+            <div class="card__header">
+              <h2>Route227 スタンプカード</h2>
+            </div>
+            <div class="card__body">
+              <div class="stamp-container">
+                <div class="stamp-grid">
+                  <div class="stamp" data-stamp-id="1"></div>
+                  <div class="stamp" data-stamp-id="2"></div>
+                  <div class="stamp" data-stamp-id="3"></div>
+                  <div class="stamp" data-stamp-id="4"></div>
+                  <div class="stamp" data-stamp-id="5"></div>
+                  <div class="stamp" data-stamp-id="6"></div>
+                </div>
+              </div>
+              <div class="scan-qr-container" style="text-align:center; margin: var(--space-16) 0;">
+                <button class="btn btn--secondary" id="scan-qr">📱QRコードをスキャン</button>
+              </div>
+              <div class="rewards-container">
+                <div class="reward-item">
+                  <h3>3スタンプ</h3>
+                  <p>☕️コーヒー1杯無料</p>
+                  <button class="btn btn--primary" id="coffee-reward" disabled>交換する</button>
+                </div>
+                <div class="reward-item">
+                  <h3>6スタンプ</h3>
+                  <p>🍛カレー1杯無料</p>
+                  <button class="btn btn--primary" id="curry-reward" disabled>交換する</button>
+                </div>
               </div>
             </div>
-
-            <div class="scan-qr-container" style="text-align:center; margin: var(--space-16) 0;">
-              <button class="btn btn--secondary" id="scan-qr">📱QRコードをスキャン</button>
-            </div>
-            <div class="rewards-container">
-              <div class="reward-item">
-                <h3>3スタンプ</h3>
-                <p>☕️コーヒー1杯無料</p>
-                <button class="btn btn--primary" id="coffee-reward" disabled>交換する</button>
-              </div>
-              <div class="reward-item">
-                <h3>6スタンプ</h3>
-                <p>🍛カレー1杯無料</p>
-                <button class="btn btn--primary" id="curry-reward" disabled>交換する</button>
-              </div>
-            </div>
-
           </div>
-        </div>
 
-        <div class="modal" id="qr-modal">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>QRコードをスキャン</h3>
-              <button class="close-modal">&times;</button>
+          <div class="modal" id="qr-modal">
+            <div class="modal-content">
+              <div class="modal-header"><h3>QRコードをスキャン</h3><button class="close-modal">&times;</button></div>
+              <div class="modal-body"><div id="qr-reader"></div></div>
             </div>
-            <div class="modal-body">
-              <div id="qr-reader"></div>
-              <div id="qr-result"></div>
+          </div>
+          <div class="modal" id="notification-modal">
+            <div class="modal-content">
+              <div class="modal-header"><h3 id="notification-title">お知らせ</h3><button class="close-modal">&times;</button></div>
+              <div class="modal-body"><p id="notification-message"></p><button class="btn btn--primary close-notification">OK</button></div>
             </div>
           </div>
         </div>
+      </section>
 
-        <div class="modal" id="notification-modal">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 id="notification-title">お知らせ</h3>
-              <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-              <p id="notification-message"></p>
-              <button class="btn btn--primary close-notification">OK</button>
-            </div>
-          </div>
+      <div class="modal" id="login-modal">
+        <div class="modal-content">
+          <div class="modal-header"><h3>メールでログイン</h3><button class="close-modal">&times;</button></div>
+          <form id="login-form" class="modal-body">
+            <input type="email" id="email" placeholder="you@example.com" required />
+            <button type="submit" class="btn btn--primary btn--full-width" style="margin-top:16px;">Magic Link を送信</button>
+            <p id="login-message" style="margin-top:12px;text-align:center;font-size:12px;"></p>
+          </form>
         </div>
-
       </div>
-    </section>
+    </main>
 
-    <div class="modal" id="login-modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>メールでログイン</h3>
-          <button class="close-modal">&times;</button>
-        </div>
-
-        <form id="login-form" class="modal-body">
-          <input type="email" id="email" placeholder="you@example.com" required />
-          <button type="submit" class="btn btn--primary btn--full-width" style="margin-top:16px;">
-        Magic Link を送信
-          </button>
-          <p id="login-message" style="margin-top:12px;text-align:center;font-size:12px;"></p>
-        </form>
-      </div>
-    </div>
-    
-  </main>
-
-  <nav class="footer-nav">
-    <div class="container">
-      <ul class="nav-tabs">
-        <li class="nav-item">
-          <button class="nav-link active" data-section="feed-section">
-            <span>⛰️</span>
-            227
-          </button>
-        </li>
-        <li class="nav-item">
-          <button class="nav-link" data-section="foodtruck-section">
-            <span>🚚</span>
-            FoodTruck
-          </button>
-        </li>
-      </ul>
-    </div>
-  </nav>
+    <nav class="footer-nav">
+        </nav>
+  </div>
 
   <script src="app.js"></script>
 </body>
