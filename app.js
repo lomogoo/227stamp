@@ -27,6 +27,8 @@ function getElements() {
     loginModal: document.getElementById('login-modal'),
     loginForm: document.getElementById('login-form'),
     stampSpinner: document.getElementById('stamp-spinner'),
+    appLoader: document.getElementById('app-loader'), // ★追加
+    userStatus: document.getElementById('user-status'), // ★追加
   };
 }
 
@@ -56,8 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   db.auth.onAuthStateChange(async (event, session) => {
-    const { articlesContainer, loginModal } = getElements();
-    if (articlesContainer) articlesContainer.innerHTML = '<div class="loading-spinner"></div>';
+    const { articlesContainer, loginModal, appLoader, userStatus } = getElements();
     
     try {
       if (session && session.user) {
@@ -82,11 +83,29 @@ document.addEventListener('DOMContentLoaded', () => {
       showNotification('エラー', 'データの読み込みに失敗しました。');
     }
 
+    // すべてのデータ取得が終わった後にUIを更新
     updateStampDisplay();
     updateRewardButtons();
     getElements().categoryTabs.forEach(tab => {
       tab.classList.toggle('active', tab.dataset.category === 'all');
     });
+
+    // ★ログイン状態を表示
+    if (userStatus) {
+      if (session && session.user) {
+        userStatus.innerHTML = '<button id="logout-button" class="btn btn--sm btn--outline">ログアウト</button>';
+        document.getElementById('logout-button').addEventListener('click', async () => {
+          appLoader?.classList.add('active'); // ログアウト中もローダー表示
+          await db.auth.signOut();
+          // onAuthStateChangeが再度呼ばれるのでローダーはそこで消える
+        });
+      } else {
+        userStatus.innerHTML = '';
+      }
+    }
+
+    // ★最後にアプリ全体のローディングを解除
+    appLoader?.classList.remove('active');
   });
 });
 
@@ -164,7 +183,7 @@ async function addStamp() {
     else if (stampCount === 6) showNotification('🎉', 'カレー1杯無料！');
     else showNotification('スタンプ獲得', `現在 ${stampCount} 個`);
   } catch (error) {
-    showNotification('エラー', 'スタンプの追加に失敗しました。');
+    // 内部で通知しているのでここでは不要
   }
 }
 
@@ -189,18 +208,18 @@ async function redeemReward(type) {
 }
 
 function initQRScanner() {
-  let isProcessing = false; // ★連続スキャン防止フラグ
+  let isProcessing = false;
   const qrReader = document.getElementById('qr-reader');
   if (!qrReader) return;
 
   html5QrCode = new Html5Qrcode('qr-reader');
   html5QrCode.start({ facingMode:'environment' }, { fps:10, qrbox:{ width:250, height:250 } },
     async (text) => {
-      if (isProcessing) return; // ★処理中は新しいスキャンを無視
+      if (isProcessing) return;
       isProcessing = true;
 
       try {
-        if (text === "ROUTE227_STAMP_2025") {
+        if ("ROUTE227_STAMP_2025" === text) {
           await addStamp();
         } else {
           showNotification('無効なQR', 'お店のQRコードではありません。');
@@ -221,7 +240,7 @@ const appData = {
 async function renderArticles(category) {
   const { articlesContainer } = getElements();
   if (!articlesContainer) return;
-
+  
   const list = [
     { url:'https://machico.mu/special/detail/2691',category:'イベント',title:'Machico 2691',summary:'イベント記事' },
     { url:'https://machico.mu/special/detail/2704',category:'イベント',title:'Machico 2704',summary:'イベント記事' },
